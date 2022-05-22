@@ -2,7 +2,7 @@ from setuptools import setup
 import sixe_idp
 
 setup(
-    name='se_idp',
+    name='6estates_idp',
     version=sixe_idp.__version__,
     description='Python SDK for IDP API by 6Estates Pte Ltd',
     author='guosihan',
