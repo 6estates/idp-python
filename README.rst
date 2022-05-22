@@ -6,7 +6,7 @@ Setup
 
 .. code-block:: bash
 
-    $ pip install sixe_idp      
+    $ pip install 6estates-idp      
 
 
 Run extraction task (the simple way)
