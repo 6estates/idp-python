@@ -9,12 +9,12 @@ setup(
 6Estates IDP SDK
 ==================
 
-Read more on https://idp-sdk-doc.nextcenter.net/python/
+Read more on https://idp-sdk-doc.6estates.com/python/
     
     """,
     author='guosihan',
     author_email='sihan.6estates@gmail.com',
-    url="https://gitlab.6estates.com/algorithm/idp-python-sdk",
+    url="https://github.com/6estates/idp-python",
     license='BSD 2-clause',
     packages=['sixe_idp'],
     install_requires=['requests'],
