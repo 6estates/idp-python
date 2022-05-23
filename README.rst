@@ -9,8 +9,11 @@ Setup
     $ pip install 6estates-idp      
 
 
-Run extraction task (the simple way)
----------------------------------------------------
+Run extraction task: Synchronous Way 
+---------------------------------------------------------------------
+
+If you just need to do one file at a time
+
 .. code-block:: python
 
     from sixe_idp.api import Client, FileType
@@ -18,8 +21,10 @@ Run extraction task (the simple way)
     task_result = client.extraction_task.run_simple_task(file=open("[UOB]202103_UOB_2222.pdf","rb"), file_type=FileType.bank_statement)
 
 
-Run extraction task (the harder way)
----------------------------------------------------
+Run extraction task: Asynchronous Way 
+--------------------------------------------------------------------
+
+If you need to do a batch of files
 
 .. code-block:: python
 
