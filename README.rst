@@ -1,6 +1,10 @@
 Usages
 =================
 
+
+Read full document on https://idp-sdk-doc.6estates.com/python/
+
+
 Setup
 -----------------
 
