@@ -1,8 +1,14 @@
-Usages
-=================
+6Estates idp-python
+==============
+A Python SDK for communicating with the 6Estates Intelligent Document Processing(IDP) Platform.
 
 
-Read full document on https://idp-sdk-doc.6estates.com/python/
+Documentation
+-----------------
+
+The documentation for the 6Estates IDP API can be found via https://idp-sea.6estates.com/docs
+
+The Python library documentation can be found via https://idp-sdk-doc.6estates.com/python/.
 
 
 Setup
@@ -13,7 +19,9 @@ Setup
     $ pip install 6estates-idp      
 
 
-Run extraction task: Synchronous Way 
+Usage 
+============ 
+1. To Extract Fields in Synchronous Way 
 ---------------------------------------------------------------------
 
 If you just need to do one file at a time
@@ -25,7 +33,7 @@ If you just need to do one file at a time
     task_result = client.extraction_task.run_simple_task(file=open("[UOB]202103_UOB_2222.pdf","rb"), file_type=FileType.bank_statement)
 
 
-Run extraction task: Asynchronous Way 
+2. To Extract Fields in Asynchronous Way
 --------------------------------------------------------------------
 
 If you need to do a batch of files
