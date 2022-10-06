@@ -2,7 +2,6 @@ import time
 import requests
 from enum import Enum
 
-
 class FileType(Enum):
 
     bank_statement = 'CBKS'
@@ -97,7 +96,7 @@ class TaskResult(object):
 
         read `more <https://idp-sea.6estates.com/docs#/extract/extraction?id=_2135-response>`_
         """
-        return self.raw['data']['status']
+        return self.raw['data']['taskStatus']
 
     @property
     def fields(self):
@@ -107,14 +106,16 @@ class TaskResult(object):
         return [TaskResultField(x) for x in self.raw['data']['fields']]
 
 class ExtractionTaskClient(object):
-    def __init__(self, token=None, region=None):
+    def __init__(self, token=None, region=None, isOauth=False):
         """
         Initializes task extraction
         :param str token: Client's token
         :param str region: Region to make requests to, defaults to 'sea'
+        :param bool isOauth: Oauth 2.0 flag
         """
         self.token = token
         self.region = region
+        self.isOauth = isOauth
         # URL to upload file and get response
         if region == 'test':
             region = ''
@@ -158,8 +159,11 @@ class ExtractionTaskClient(object):
         assert isinstance(file_type, FileType), "Invalid file type"
         if file is None:
             raise IDPException("File is required")
-
-        headers = {"X-ACCESS-TOKEN": self.token}
+              
+        if self.isOauth:
+            headers = {"Authorization": self.token}
+        else:
+            headers = {"X-ACCESS-TOKEN": self.token}
         files = {"file": file}
         data = {'fileType': file_type.value, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
@@ -186,8 +190,12 @@ class ExtractionTaskClient(object):
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
-        headers = {"X-ACCESS-TOKEN": self.token}
+        if self.isOauth:
+            headers = {"Authorization": self.token}
+        else:
+            headers = {"X-ACCESS-TOKEN": self.token}
         r = requests.get(self.url_get+str(task_id), headers=headers)
+
         if r.ok:
             return TaskResult(r.json())
         raise IDPException(r.json()['message'])
@@ -208,6 +216,7 @@ class ExtractionTaskClient(object):
         start = time.time()
         task = self.create(file=file, file_type=file_type)
         task_result = self.result(task_id=task.task_id)
+ 
         while(task_result.status=='Doing' or task_result.status=='Init'):
             if time.time() - start > timeout:
                 raise IDPException(f'Task timeout exceeded: {timeout}')
@@ -220,14 +229,61 @@ class ExtractionTaskClient(object):
         return task_result
 
 
+class OauthClient(object):
+    def __init__(self, region=None):
+        """
+        Initializes the Oauth Client 
+
+        :param region: IDP Region to make requests to, e.g. 'test'
+        :type region: str
+        :returns: :class:`OauthClient <OauthClient>`
+        :rtype: sixe_idp.api.OauthClient
+        """
+
+        if region not in ['test', 'sea']:
+            raise IDPConfigurationException(
+                "Region is required and limited in ['test','sea']")
+        self.region = region
+        
+        if region == 'test':
+            region = '-onp'
+        else:
+            region = '-'+region
+        self.url_post = "https://oauth"+region + \
+            ".6estates.com/oauth/token?grant_type=client_bind"
+    
+
+    def get_IDP_authorization(self, authorization=None):
+        """
+        :param authorization: Client's authorization
+        :type authorization: str
+
+
+        """
+        if authorization is None:
+            raise IDPConfigurationException('Authorization is required')
+        self.authorization = authorization
+
+        headers = {"Authorization": self.authorization}
+        r = requests.post(self.url_post, headers=headers)
+
+        if r.ok:
+            if r.json()['data']['expired'] == False:
+                return r.json()['data']['value']
+            else:
+                raise IDPException("This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " + r.json()['message'])  
+                
+        raise IDPException(r.json()['message'])        
+
 class Client(object):
-    def __init__(self, region=None, token=None):
+    def __init__(self, region=None, token=None, isOauth=False):
         """
         Initializes the IDP Client
 
         :param token: Client's token
         :type token: str
         :param region: IDP Region to make requests to, e.g. 'test'
+        :param bool isOauth: Oauth 2.0 flag
         :type token: str
         :returns: :class:`Client <Client>`
         :rtype: sixe_idp.api.Client
@@ -239,8 +295,8 @@ class Client(object):
                 "Region is required and limited in ['test','sea']")
         self.region = region
         self.token = token
-
-        self.extraction_task = ExtractionTaskClient(token=token, region=region)
+        self.isOauth = isOauth
+        self.extraction_task = ExtractionTaskClient(token=token, region=region, isOauth=self.isOauth)
         """
             An :class:`ExtractionTaskClient <ExtractionTaskClient>` object
         """
