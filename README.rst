@@ -78,3 +78,46 @@ If you need to do a batch of files
         task_result = client.extraction_task.result(task_id=task.task_id)
 
     print(task_result.raw)
+
+
+4. To Extract FAAS Extraction Using Static Token in Asynchronous Way & Fetch the result
+--------------------------------------------------------------------
+.. code-block:: python
+
+    from sixe_idp.faas_api import FaasClient
+    # Extract FAAS
+    faasClient1 = FaasClient(region='test', token='YOUR STATIC TOKEN HERE', isOauth=False)
+    files = {
+        "files": ("test.zip", open('/your/path/of/upload/zipped/test_faas.zip', 'rb'))
+    }
+    faas_task_result1 = faasClient1.extraction_task.create(files=files, customerType=1, countryId='100065', informationType=0)
+    print(faas_task_result1.task_id)
+    # Fetch the result into the defined file
+    faas_task_result1 = faasClient1.extraction_task.result(task_id=faas_task_result1.task_id)
+    while faas_task_result1.status != 'OK':
+        faas_task_result1 = faasClient1.extraction_task.result(task_id=faas_task_result1.task_id)
+        time.sleep(60)
+        print(f"STOP AT {time.time()}")
+    task_result.write_content_to_zip('/your/path/of/result/zipped/test_faas_result.zip')
+
+5. To Extract FAAS Extraction Using Dynamic Token in Asynchronous Way & Fetch the result
+--------------------------------------------------------------------
+.. code-block:: python
+
+    from sixe_idp.faas_api import FaasClient
+    import time
+    # Extract FAAS
+    oauth = OauthClient(region='sea').get_IDP_authorization(authorization='YOUR DYNAMIC TOKE HERE')
+    faasClient2 = FaasClient(region='sea', token=oauth, isOauth=True)
+    files = {
+        "files": ("test.zip", open('/your/path/of/upload/zipped/test_faas.zip', 'rb'))
+    }
+    faas_task_result2 = faasClient2.extraction_task.create(files=files, customerType=1, countryId='100065', informationType=0)
+    print(faas_task_result2.task_id)
+
+    # Fetch the result into the defined file
+    faas_task_result = faasClient2.extraction_task.result(task_id=faas_task_result2.task_id)
+    while task_result.status != 'OK':
+        faas_task_result = faasClient2.extraction_task.result(task_id=faas_task_result2.task_id)
+        time.sleep(60)
+    faas_task_result.write_content_to_zip('/your/path/of/result/zipped/test_faas_result.zip')

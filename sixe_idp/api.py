@@ -1,9 +1,10 @@
 import time
-import requests
 from enum import Enum
 
-class FileType(Enum):
+import requests
 
+
+class FileType(Enum):
     bank_statement = 'CBKS'
     invoice = 'CINV'
     cheque = 'CHQ'
@@ -17,6 +18,25 @@ class FileType(Enum):
     hong_kong_annual_return = 'HKAR'
     purchase_order = 'PO'
     delivery_order = 'DO'
+    npwp = 'NPWP'  # Nomor Pokok Wajib Pajak
+    nric = 'NRIC'  # Singapore NRIC
+    zhid = 'ZHID'  # China ID
+    pp = 'PP'  # China Passport
+    dos = 'DOS'  # Financial Statement	DOS
+    bfp = 'BFP'  # ACRA BizFile	BFP
+    bpkb = 'BPKB'  # Buku Pemilik Kendaraan Bermotor	BPKB
+    kk = 'KK'  # Kartu Keluarga	KK
+    crn = 'CRN'  # Credit Note	CRN
+    dbn = 'DBN'  # Debit Note	DBN
+    stnk = 'STNK'  # Surat Tanda Nomor Kendaraan	STNK
+    cinq = 'CINQ'  # Product Inquiry	CINQ
+    cd = 'CD'  # Company Deed	CD
+
+
+class ExtractMode(Enum):
+    Lite = 1
+    Regular = 2
+    Advance = 3
 
 
 class IDPException(Exception):
@@ -45,6 +65,7 @@ class Task(object):
     def task_id(self):
         return self.raw['data']
 
+
 class TaskResultField:
     def __init__(self, raw) -> None:
         self.raw = raw
@@ -72,12 +93,13 @@ class TaskResultField:
         """
         see `type <https://idp-sea.6estates.com/docs#/format/format>`_
         """
-        
+
         return self.raw['type']
 
     # @property
     # def extraction_confidence(self):
     #     return self.raw['extraction_confidence']
+
 
 class TaskResult(object):
     def __init__(self, raw):
@@ -105,6 +127,7 @@ class TaskResult(object):
         """
         return [TaskResultField(x) for x in self.raw['data']['fields']]
 
+
 class ExtractionTaskClient(object):
     def __init__(self, token=None, region=None, isOauth=False):
         """
@@ -120,15 +143,15 @@ class ExtractionTaskClient(object):
         if region == 'test':
             region = ''
         else:
-            region = '-'+region
-        self.url_post = "https://idp"+region + \
-            ".6estates.com/customer/extraction/fields/async"
-        self.url_get = "https://idp"+region + \
-            ".6estates.com/customer/extraction/field/async/result/"
+            region = '-' + region
+        self.url_post = "https://idp" + region + \
+                        ".6estates.com/customer/extraction/fields/async"
+        self.url_get = "https://idp" + region + \
+                       ".6estates.com/customer/extraction/field/async/result/"
 
     def create(self, file=None, file_type=None, lang=None,
                customer=None, customer_param=None, callback=None,
-               auto_callback=None, callback_mode=None, hitl=None) -> Task:
+               auto_callback=None, callback_mode=None, hitl=None, extractMode=None, includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
         """
         :param lang: English: EN, Default is EN
         :type lang: str
@@ -155,11 +178,18 @@ class ExtractionTaskClient(object):
         :param hitl: Enables the Human-In-The-Loop (HITL) service. If the value is true, the submitted task will be processed by AI + HITL. Otherwise, the task will be processed by AI only.
             Default value: false.
         :type hitl: bool
+        :param extractMode: The mode of extraction. 1:Lite, 2:Regular, 3:Advance, 2 as Default.
+        :param includingFieldCodes: the fieldCodes that needs to be included in the callback response. Default value is all fieldCodes.
+            it is like str ['F_CBKS_1','F_CBKS_2'], all unfiltered fieldCodes as default.
+        :param autoChecks: if return auth check content, 0 means NO return, 1 means return, 0 as default
+        :param fileTypeFrom: 1 means ordinary using system defined file type, 2 means using user defined file type, 1 as default
+        :param remark:
         """
         assert isinstance(file_type, FileType), "Invalid file type"
+        # assert isinstance(extractMode, ExtractMode), "Invalid Extract Mode"
         if file is None:
             raise IDPException("File is required")
-              
+
         if self.isOauth:
             headers = {"Authorization": self.token}
         else:
@@ -168,7 +198,7 @@ class ExtractionTaskClient(object):
         data = {'fileType': file_type.value, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,
-                'hitl': hitl}
+                'hitl': hitl, 'ExtractMode': extractMode, 'includingFieldCodes': includingFieldCodes}
         trash_bin = []
         for key in data:
             if data[key] is None:
@@ -194,7 +224,7 @@ class ExtractionTaskClient(object):
             headers = {"Authorization": self.token}
         else:
             headers = {"X-ACCESS-TOKEN": self.token}
-        r = requests.get(self.url_get+str(task_id), headers=headers)
+        r = requests.get(self.url_get + str(task_id), headers=headers)
 
         if r.ok:
             return TaskResult(r.json())
@@ -216,13 +246,13 @@ class ExtractionTaskClient(object):
         start = time.time()
         task = self.create(file=file, file_type=file_type)
         task_result = self.result(task_id=task.task_id)
- 
-        while(task_result.status=='Doing' or task_result.status=='Init'):
+
+        while (task_result.status == 'Doing' or task_result.status == 'Init'):
             if time.time() - start > timeout:
                 raise IDPException(f'Task timeout exceeded: {timeout}')
             time.sleep(poll_interval)
             task_result = self.result(task_id=task.task_id)
-            
+
         if task_result.status == 'Done':
             return task_result
 
@@ -244,14 +274,13 @@ class OauthClient(object):
             raise IDPConfigurationException(
                 "Region is required and limited in ['test','sea']")
         self.region = region
-        
+
         if region == 'test':
             region = '-onp'
         else:
-            region = '-'+region
-        self.url_post = "https://oauth"+region + \
-            ".6estates.com/oauth/token?grant_type=client_bind"
-    
+            region = '-' + region
+        self.url_post = "https://oauth" + region + \
+                        ".6estates.com/oauth/token?grant_type=client_bind"
 
     def get_IDP_authorization(self, authorization=None):
         """
@@ -271,9 +300,12 @@ class OauthClient(object):
             if r.json()['data']['expired'] == False:
                 return r.json()['data']['value']
             else:
-                raise IDPException("This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " + r.json()['message'])  
-                
-        raise IDPException(r.json()['message'])        
+                raise IDPException(
+                    "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
+                    r.json()['message'])
+
+        raise IDPException(r.json()['message'])
+
 
 class Client(object):
     def __init__(self, region=None, token=None, isOauth=False):

@@ -13,6 +13,7 @@ Read more on https://idp-sdk-doc.6estates.com/python/
     
     """,
     author='guosihan',
+    developer='hujian',
     author_email='sihan.6estates@gmail.com',
     url="https://github.com/6estates/idp-python",
     license='BSD 2-clause',
