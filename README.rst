@@ -85,6 +85,7 @@ If you need to do a batch of files
 .. code-block:: python
 
     from sixe_idp.faas_api import FaasClient
+    import time
     # Extract FAAS
     faasClient1 = FaasClient(region='test', token='YOUR STATIC TOKEN HERE', isOauth=False)
     files = {
