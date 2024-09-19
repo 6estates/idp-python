@@ -39,7 +39,7 @@ Usage
 
     from sixe_idp.api import Client, OauthClient, FileType
     
-    oauth = OauthClient(region='sea').get_IDP_authorization(authorization ='your-authorization-here')
+    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your clientId', clientSecret='your clientSecret')
     client = Client(region='sea', token=oauth, isOauth=True)
     
     
@@ -108,7 +108,7 @@ If you need to do a batch of files
     from sixe_idp.faas_api import FaasClient
     import time
     # Extract FAAS
-    oauth = OauthClient(region='sea').get_IDP_authorization(authorization='YOUR DYNAMIC TOKE HERE')
+    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your clientId', clientSecret='your clientSecret')
     faasClient2 = FaasClient(region='sea', token=oauth, isOauth=True)
     files = {
         "files": ("test.zip", open('/your/path/of/upload/zipped/test_faas.zip', 'rb'))

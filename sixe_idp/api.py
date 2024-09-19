@@ -2,6 +2,7 @@ import time
 from enum import Enum
 
 import requests
+import hashlib
 
 
 class FileType(Enum):
@@ -186,7 +187,7 @@ class ExtractionTaskClient(object):
         :param remark:
         """
         assert isinstance(file_type, FileType), "Invalid file type"
-        # assert isinstance(extractMode, ExtractMode), "Invalid Extract Mode"
+        assert isinstance(extractMode, ExtractMode), "Invalid Extract Mode"
         if file is None:
             raise IDPException("File is required")
 
@@ -198,7 +199,7 @@ class ExtractionTaskClient(object):
         data = {'fileType': file_type.value, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,
-                'hitl': hitl, 'ExtractMode': extractMode, 'includingFieldCodes': includingFieldCodes}
+                'hitl': hitl, 'ExtractMode': extractMode.value, 'includingFieldCodes': includingFieldCodes}
         trash_bin = []
         for key in data:
             if data[key] is None:
@@ -281,6 +282,10 @@ class OauthClient(object):
             region = '-' + region
         self.url_post = "https://oauth" + region + \
                         ".6estates.com/oauth/token?grant_type=client_bind"
+        self.new_authorization_url ="https://oauth" + region + \
+                        ".6estates.com/api/token"
+        self.clientId = None
+        self.clientSecret = None
 
     def get_IDP_authorization(self, authorization=None):
         """
@@ -306,6 +311,31 @@ class OauthClient(object):
 
         raise IDPException(r.json()['message'])
 
+    def get_IDP_new_authorization(self, clientId=None, clientSecret=None):
+        if clientId is None or clientSecret is None:
+            raise IDPConfigurationException('clientId&clientSecret are required')
+        self.clientId = clientId
+        self.clientSecret = clientSecret
+
+        headers = {"Content-Type": "application/json"}
+        current_timestamp = int(time.time()*1000)
+        signature = build_sha256_str(self.clientId, self.clientSecret, current_timestamp)
+        data = {
+            "clientId": clientId,
+            "timestamp": current_timestamp,
+            "signature": signature
+        }
+
+        r = requests.post(self.new_authorization_url, headers=headers, json=data)
+        if r.ok:
+            if r.json()['data']['expired'] == False:
+                return r.json()['data']['value']
+            else:
+                raise IDPException(
+                    "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
+                    r.json()['message'])
+
+        raise IDPException(r.json()['message'])
 
 class Client(object):
     def __init__(self, region=None, token=None, isOauth=False):
@@ -332,3 +362,7 @@ class Client(object):
         """
             An :class:`ExtractionTaskClient <ExtractionTaskClient>` object
         """
+def build_sha256_str(clientId, clientSecret, timestamp):
+    input_str = str(clientId) + str(clientSecret) + str(timestamp)
+    sha256_hash = hashlib.sha256(input_str.encode('utf-8')).hexdigest()
+    return sha256_hash
