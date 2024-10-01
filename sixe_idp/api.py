@@ -152,7 +152,7 @@ class ExtractionTaskClient(object):
 
     def create(self, file=None, file_type=None, lang=None,
                customer=None, customer_param=None, callback=None,
-               auto_callback=None, callback_mode=None, hitl=None, extractMode=None, includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
+               auto_callback=None, callback_mode=None, hitl=None, extractMode=ExtractMode.Regular, includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
         """
         :param lang: English: EN, Default is EN
         :type lang: str
