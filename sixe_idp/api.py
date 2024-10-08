@@ -186,7 +186,7 @@ class ExtractionTaskClient(object):
         :param fileTypeFrom: 1 means ordinary using system defined file type, 2 means using user defined file type, 1 as default
         :param remark:
         """
-        assert isinstance(file_type, FileType), "Invalid file type"
+        # assert isinstance(file_type, FileType), "Invalid file type"
         assert isinstance(extractMode, ExtractMode), "Invalid Extract Mode"
         if file is None:
             raise IDPException("File is required")
@@ -196,10 +196,12 @@ class ExtractionTaskClient(object):
         else:
             headers = {"X-ACCESS-TOKEN": self.token}
         files = {"file": file}
-        data = {'fileType': file_type.value, 'lang': lang, 'customer': customer,
+        data = {'fileType': file_type, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,
-                'hitl': hitl, 'ExtractMode': extractMode.value, 'includingFieldCodes': includingFieldCodes}
+                'hitl': hitl, 'ExtractMode': extractMode.value, 'includingFieldCodes': includingFieldCodes,
+                'autoChecks' :autoChecks, 'fileTypeFrom': fileTypeFrom, 'remark': remark
+                }
         trash_bin = []
         for key in data:
             if data[key] is None:
