@@ -124,8 +124,8 @@ Usage
 --------------------------------------------------------------------
 4.1 Asynchronous Submit File For Document Agent
 ~~~~~~~~~~~~
-
 .. code-block:: python
+
     task = client.extraction_doc_agent_create(flowCode='DAG1',file=open("your file path", "rb"))
     print(task.task_id)
     # this would be the application_id
