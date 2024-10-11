@@ -76,11 +76,14 @@ Usage
 
     history = client.extraction_task_history(page=1,limit=10)
 
+
 2.4 Add Task to HITL
 ~~~~~~~~~~~~
 .. code-block:: python
+
     application_id = 'your application_id/task_id'
     add_hitl = client.extraction_task_add_hitl(applicationId=application_id)
+
 
 3. FAAS - Bank Statement Insight
 --------------------------------------------------------------------
@@ -99,6 +102,7 @@ Usage
 3.2 Export FAAS Insight Analysis Result By Insight Analysis Application Id
 ~~~~~~~~~~~~
 .. code-block:: python
+
     # this content could be a xlsx file or a zip file depending on your config on our system
     task_id = 'FAAS1234'
     content_bytes = client.extraction_faas_export(task_id=task_id)
@@ -108,8 +112,9 @@ Usage
 
 
 3.3 To Get FAAS Insight Analysis Result By Insight Analysis Application Id
---------------------------------------------------------------------
+~~~~~~~~~~~~
 .. code-block:: python
+
     task_id = 'FAAS1234'
     res = client.extraction_faas_result(task_id=task_id)
     print(res)
@@ -129,6 +134,7 @@ Usage
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     application_id = 'your application id'
     status = client.extraction_doc_agent_status(applicationId=application_id)
     print(status)
@@ -137,8 +143,10 @@ Usage
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     # this could be a xlsx or a zip file depending on your config on our system
     application_id = 'your application id'
     content_bytes = client.extraction_doc_agent_export(applicationId=application_id)
     with open('/your/path/result/file.xlsx', 'wb') as f:
         f.write(content_bytes)
+
