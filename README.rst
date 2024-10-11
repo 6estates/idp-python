@@ -2,13 +2,16 @@
 ==============
 A Python SDK for communicating with the 6Estates Intelligent Document Processing(IDP) Platform.
 
+We did some api upgrade, simplified the api using and return, gives you much more freedom.
+We recommend to use client.extraction_async_create() to replace the client.extraction_task.create()
+    and client.extraction_result() to replace client.extraction_task.result()
 
 Documentation
 -----------------
 
 The documentation for the 6Estates IDP API can be found via https://idp-sea.6estates.com/docs
 
-The Python library documentation can be found via https://idp-sdk-doc.6estates.com/python/.
+The Python library documentation can be found via https://idp-sdk-doc.6estates.com/
 
 
 Setup
@@ -24,19 +27,7 @@ Usage
 1. Initialize the 6Estates IDP Client 
 ---------------------------------------------------------------------
 
-6E API Authorization based on oauth(Deprecated)
-
-.. code-block:: python
-
-    import time
-    from sixe_idp.api import Client, OauthClient
-    # region has test and sea, sea for production env
-    http_header = 'Basic x...' # your http header, normal begin with Basic
-    oauth = OauthClient(region='test').get_IDP_authorization(http_header)
-    oauth_client = Client(region='test', token=oauth, isOauth=True)
-
-
-6E API Authorization based on oauth 2.0(Recommended)
+6E API Authorization based on oauth 2.0
 
 .. code-block:: python
 
@@ -84,6 +75,49 @@ Usage
     application_id = 'your application_id/task_id'
     add_hitl = client.extraction_task_add_hitl(applicationId=application_id)
 
+2.5 Sample of create a simple extraction job and fetch result
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    # This is only a simple demo, showing how to create an extraction task and fetch the result
+    import time
+    from sixe_idp.api import Client, OauthClient, IDPException
+    def run_simple_task(client, file_path=None, file_type=None, poll_interval=30, timeout=600):
+        """
+            Run simple extraction task
+
+            :param file: Pdf/image file. Only one file is allowed to be uploaded each time
+            :type file: file
+            :param file_type: The code of the file type (e.g., CBKS). Please see details of File Type Code.
+            :type file_type: str
+            :param poll_interval: Interval to poll the result from api, in seconds
+            :type poll_interval: float
+            :param timeout: Timeout in seconds
+            :type timeout: float
+        """
+        start = time.time()
+        task = client.extraction_async_create(file=open(file_path, "rb"),
+                                                    file_type=file_type)
+        print(task.task_id)
+        time.sleep(poll_interval)
+        result = client.extraction_result(task_id=task.task_id)
+        print(result)
+        while result['data']['taskStatus'] in ['Doing','Init']:
+            if time.time() - start > timeout:
+                raise IDPException(f'Task timeout exceeded: {timeout}')
+            time.sleep(poll_interval)
+            result = client.extraction_result(task_id=task.task_id)
+            print(result['data']['taskStatus'])
+        if result['data']['taskStatus'] == 'Done':
+            return result
+        else:
+            raise IDPException(f'Task timeout exceeded: {timeout}')
+
+    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your client id', clientSecret='your client secret')
+    client = Client(region='sea', token=oauth, isOauth=True)
+    result = run_simple_task(client, file_path="your file path", file_type='CBKS')
+    print(result)
 
 3. FAAS - Bank Statement Insight
 --------------------------------------------------------------------
@@ -150,4 +184,48 @@ Usage
     content_bytes = client.extraction_doc_agent_export(applicationId=application_id)
     with open('/your/path/result/file.xlsx', 'wb') as f:
         f.write(content_bytes)
+4.4 Sample of create a doc agent task and fetch the result
+~~~~~~~~~~~~
 
+.. code-block:: python
+
+    # This is only a demo showing a simple usage of doc agent api
+    def run_simple_doc_agent_task(client, flowCode: int,
+                        file_path,
+                        poll_interval=30,
+                        timeout=600,
+                        result_file_dir = None,
+                        callback: str = None,
+                        autoCallback: bool = None,
+                        callbackMode: int = None,
+                        callbackQaCodes: str = None):
+        # 1. create doc agent task
+        task = client.extraction_doc_agent_create(flowCode=flowCode, file=open(file_path, "rb"))
+        print(task.task_id)
+        time.sleep(poll_interval)
+        start = time.time()
+
+        # 2. get doc agent task status
+        response = client.extraction_doc_agent_status(applicationId=task.task_id)
+        task = client.extraction_doc_agent_create(flowCode=flowCode, file=open(file_path, "rb"))
+        status = response['data']['status']
+        print(status)
+        while status in ['On Process']:
+            if time.time() - start > timeout:
+                raise IDPException(f'Task timeout exceeded: {timeout}')
+            time.sleep(poll_interval)
+            response = client.extraction_doc_agent_status(applicationId=task.task_id)
+            status = response['data']['status']
+            print(status)
+        # 3. get doc agent result
+        content_bytes = client.extraction_doc_agent_export(applicationId=task.task_id)
+        with open(f'{result_file_dir}/{task.task_id}.xlsx', 'wb') as f:
+            f.write(content_bytes)
+        print(f"{task.task_id} end cost {time.time() - start} seconds")
+
+    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your client id', clientSecret='your client secret')
+    client = Client(region='sea', token=oauth, isOauth=True)
+    flowCode = "DAG1"
+    file_path = "your file path"
+    result_file_dir = "/your/result/path/dir"
+    run_simple_doc_agent_task(client, flowCode=flowCode, file_path=file_path, result_file_dir=result_file_dir)

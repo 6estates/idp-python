@@ -479,7 +479,8 @@ class Client(object):
         r = requests.post(self.extraction_doc_agent_status_url + applicationId, headers=self.headers)
         if r.ok:
             return r.json()
-        raise IDPException(r.json()['message'])
+        else:
+            raise IDPException(r.json()['message'])
 
     def extraction_doc_agent_export(self, applicationId):
         """
