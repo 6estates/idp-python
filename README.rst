@@ -11,7 +11,7 @@ Documentation
 
 The documentation for the 6Estates IDP API can be found via https://idp-sea.6estates.com/docs
 
-The Python library documentation can be found via https://idp-sdk-doc.6estates.com/
+The Python library documentation can be found via https://idp-sdk-doc.6estates.com
 
 
 Setup

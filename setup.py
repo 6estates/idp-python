@@ -9,7 +9,7 @@ setup(
 6Estates IDP SDK
 ==================
 
-Read more on https://idp-sdk-doc.6estates.com/python/
+Read more on https://idp-sdk-doc.6estates.com/
     
     """,
     author='guosihan',
