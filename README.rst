@@ -189,6 +189,8 @@ Usage
 
 .. code-block:: python
 
+    import time
+    from sixe_idp.api import Client, OauthClient, IDPException
     # This is only a demo showing a simple usage of doc agent api
     def run_simple_doc_agent_task(client, flowCode: int,
                         file_path,
