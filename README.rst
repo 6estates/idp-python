@@ -4,7 +4,7 @@ A Python SDK for communicating with the 6Estates Intelligent Document Processing
 
 We did some api upgrade, simplified the api using and return, gives you much more freedom.
 We recommend to use client.extraction_async_create() to replace the client.extraction_task.create()
-    and client.extraction_result() to replace client.extraction_task.result()
+and client.extraction_result() to replace client.extraction_task.result()
 
 Documentation
 -----------------
