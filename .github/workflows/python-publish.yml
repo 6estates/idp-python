@@ -29,14 +29,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build
+        pip install build twine
     - name: Build package
       run: python -m build
     - name: Publish package
-      uses: pypa/gh-action-pypi-publish@v1.10.3
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        skip-existing: true
-        verbose: true
-        print-hash: true
+      run: |
+          echo "Uploading with --skip-existing..."
+          python -m twine upload --skip-existing dist/* -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+      
