@@ -33,7 +33,9 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package
-      run: |
-          echo "Uploading with --skip-existing..."
-          python -m twine upload --skip-existing dist/* -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
-      
+      uses: pypa/gh-action-pypi-publish@v1.10.3
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        verbose: true
+        print-hash: true
