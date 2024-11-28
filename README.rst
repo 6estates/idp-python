@@ -42,7 +42,7 @@ Usage
     client = Client(http_host='https://idp-sea.6estates.com', oauth_client=oauth_client)
     # Also added a way to refresh token, default is every 90 minutes, would do a refresh,but this still needs to be called manually
     # this can be called before any action as less than refresh_interval, it would do nothing
-    client.refresh_token(refresh_interval=90)
+    client.refresh_token(refresh_interval=90*60)
 2. Asynchronous Information Extraction API
 --------------------------------------------------------------------
 

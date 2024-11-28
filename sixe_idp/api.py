@@ -185,14 +185,14 @@ class OauthClient(object):
     def set_token_header(self, server_authorization_value):
         self.token_header = {"Authorization": server_authorization_value}
 
-    def refresh_oauth(self, refresh_interval=90):
+    def refresh_oauth(self, refresh_interval=90*60):
         """
-        refresh_interval: minutes to last refresh oauth token
+        refresh_interval: seconds to last refresh oauth token
         Refreshes the oauth token, if
         """
         if self.last_authorization_time is None:
             raise IDPException('oauth client needs to be initialized and created successfully before refresh_oauth')
-        if int(time.time() * 1000) - self.last_authorization_time > refresh_interval * 60 * 1000:
+        if int(time.time() * 1000) - self.last_authorization_time > refresh_interval * 1000:
             if self.oauth_type == 'oauth':
                 self.get_IDP_authorization(self.authorization)
             elif self.oauth_type == 'oauth2':
@@ -230,9 +230,9 @@ class Client(object):
         self.extraction_doc_agent_status_url = f"{http_host}/customer/extraction/doc_agent/status/"
         self.extraction_doc_agent_export_url = f"{http_host}/customer/extraction/doc_agent/analysis/export/"
 
-    def refresh_token(self, refresh_interval=90):
+    def refresh_token(self, refresh_interval=90*60):
         """
-        refresh_interval: minutes to last refresh oauth token
+        refresh_interval: seconds to last refresh oauth token
         Refreshes the oauth client token, if
         """
         self.oauth_client.refresh_oauth(refresh_interval)
