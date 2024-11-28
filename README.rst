@@ -37,11 +37,9 @@ Usage
     # For possible change, full web url needs to be provided
     client_id = 'your client id found on web'
     client_secret = 'your client secret found on web'
-    oauth_client = OauthClient(oauth_type='oauth2', client_id=client_id, client_secret=client_secret,
-                           oauth2_authorization_url='https://oauth-sea.6estates.com/api/token')
+    oauth_client = OauthClient(client_id=client_id, client_secret=client_secret)
     client = Client(http_host='https://idp-sea.6estates.com', oauth_client=oauth_client)
-    # Also added a way to refresh token, default is every 90 minutes, would do a refresh,but this still needs to be called manually
-    # this can be called before any action as less than refresh_interval, it would do nothing
+    # Also added a way to refresh token, default is every 90 minutes, every func has already updated the token internally
     client.refresh_token(refresh_interval=90*60)
 2. Asynchronous Information Extraction API
 --------------------------------------------------------------------
@@ -117,8 +115,6 @@ Usage
         else:
             raise IDPException(f'Task timeout exceeded: {timeout}')
 
-    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your client id', clientSecret='your client secret')
-    client = Client(region='sea', token=oauth, isOauth=True)
     result = run_simple_task(client, file_path="your file path", file_type='CBKS')
     print(result)
 
@@ -187,26 +183,26 @@ Usage
                          callbackUrl: str = None,
                          autoCallback: bool = True,
                          callbackMode: int = 0, poll_interval=60, timeout=12*60):
-    # 1. create doc agent task
-    task = client.extraction_faas_create(files=files, customerType=customerType, countryId=countryId, regionId=regionId,
-                                         informationType=informationType, cifNumber=cifNumber, borrowerName=borrowerName,
-                                         loanAmount=loanAmount, applicationNumber=applicationNumber, applicationDate=applicationDate,
-                                         currency=currency, rateDateType=rateDateType, rateFrom=rateFrom, rateDate=rateDate,
-                                         automatic=automatic, hitlType=hitlType, industryType=industryType, industryBiCode=industryBiCode,
-                                         ebitdaRatio=ebitdaRatio, relatedParties=relatedParties, supplierBuyer=supplierBuyer, checkAccountStr=checkAccountStr,
-                                         callbackUrl=callbackUrl, autoCallback=autoCallback, callbackMode=callbackMode)
-    print(task.task_id)
-    time.sleep(poll_interval)
-    start = time.time()
+        # 1. create doc agent task
+        task = client.extraction_faas_create(files=files, customerType=customerType, countryId=countryId, regionId=regionId,
+                                             informationType=informationType, cifNumber=cifNumber, borrowerName=borrowerName,
+                                             loanAmount=loanAmount, applicationNumber=applicationNumber, applicationDate=applicationDate,
+                                             currency=currency, rateDateType=rateDateType, rateFrom=rateFrom, rateDate=rateDate,
+                                             automatic=automatic, hitlType=hitlType, industryType=industryType, industryBiCode=industryBiCode,
+                                             ebitdaRatio=ebitdaRatio, relatedParties=relatedParties, supplierBuyer=supplierBuyer, checkAccountStr=checkAccountStr,
+                                             callbackUrl=callbackUrl, autoCallback=autoCallback, callbackMode=callbackMode)
+        print(task.task_id)
+        time.sleep(poll_interval)
+        start = time.time()
 
-    # 2. get doc agent task status
-    status = client.extraction_faas_status(task.task_id)
-    print(status)
+        # 2. get doc agent task status
+        status = client.extraction_faas_status(task.task_id)
+        print(status)
 
-    # 3. get doc agent result
-    result = client.extraction_faas_result(task.task_id)
-    print(f"{task.task_id} end cost {time.time() - start} seconds")
-    return result
+        # 3. get doc agent result
+        result = client.extraction_faas_result(task.task_id)
+        print(f"{task.task_id} end cost {time.time() - start} seconds")
+        return result
 
     files = {
         "files": ("test.zip", open('/your/file/path/test.zip', 'rb'))
@@ -286,8 +282,6 @@ Usage
             f.write(content_bytes)
         print(f"{task.task_id} end cost {time.time() - start} seconds")
 
-    oauth = OauthClient(region='sea').get_IDP_new_authorization(clientId='your client id', clientSecret='your client secret')
-    client = Client(region='sea', token=oauth, isOauth=True)
     flowCode = "DAG1"
     file_path = "your file path"
     result_file_dir = "/your/result/path/dir"

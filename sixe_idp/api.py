@@ -86,7 +86,7 @@ def verify_app_header_for_mode3(result_bytes, file_bytes, result_in_excel_bytes,
 
 
 class OauthClient(object):
-    def __init__(self, oauth_type='oauth2', oauth_authorization_url=None, oauth2_authorization_url=None, client_id=None,
+    def __init__(self, oauth_type='oauth2', oauth_authorization_url=None, oauth2_authorization_url='https://oauth-sea.6estates.com/api/token', client_id=None,
                  client_secret=None, authorization=None):
         """
         Initializes the Oauth Client
@@ -117,42 +117,43 @@ class OauthClient(object):
         if oauth_authorization_url is None and oauth2_authorization_url is None:
             raise IDPException("need at least one url to get authorization")
 
-        if oauth_type == 'oauth':
-            if authorization is not None:
-                self.get_IDP_authorization(authorization)
-            else:
-                print(
-                    "authorization is required for OauthClient,please use get_IDP_authorization to successfully get authorization")
-        elif oauth_type == 'oauth2':
+        # if oauth_type == 'oauth':
+        #     if authorization is not None:
+        #         self.get_IDP_authorization(authorization)
+        #     else:
+        #         print(
+        #             "authorization is required for OauthClient,please use get_IDP_authorization to successfully get authorization")
+        # elif oauth_type == 'oauth2':
+        if oauth_type == 'oauth2':
             if client_id is not None and client_secret is not None:
                 self.get_IDP_new_authorization(client_id, client_secret)
             else:
-                print("client_id and client_secret are required for Oauth2Client")
+                raise IDPException("client_id and client_secret are required for Oauth2Client")
         else:
-            raise IDPException("oauth_type must be oauth or oauth2")
+            raise IDPException("oauth_type must be oauth2")
 
-    def get_IDP_authorization(self, authorization):
-        """
-        :param authorization: Client's authorization
-        :type authorization: str
-        """
-        if self.authorization is None:
-            raise IDPConfigurationException('authorization is required for OauthClient')
-        self.authorization = authorization
-        self.oauth_type = 'oauth'
-        headers = {"Authorization": self.authorization}
-        r = requests.post(self.oauth_authorization_url, headers=headers)
-
-        if r.ok:
-            if not r.json()['data']['expired']:
-                self.last_authorization_time = int(time.time() * 1000)
-                self.set_token_header(r.json()['data']['value'])
-            else:
-                raise IDPException(
-                    "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
-                    r.json()['message'])
-
-        raise IDPException(r.json()['message'])
+    # def get_IDP_authorization(self, authorization):
+    #     """
+    #     :param authorization: Client's authorization
+    #     :type authorization: str
+    #     """
+    #     if self.authorization is None:
+    #         raise IDPConfigurationException('authorization is required for OauthClient')
+    #     self.authorization = authorization
+    #     self.oauth_type = 'oauth'
+    #     headers = {"Authorization": self.authorization}
+    #     r = requests.post(self.oauth_authorization_url, headers=headers)
+    #
+    #     if r.ok:
+    #         if not r.json()['data']['expired']:
+    #             self.last_authorization_time = int(time.time() * 1000)
+    #             self.set_token_header(r.json()['data']['value'])
+    #         else:
+    #             raise IDPException(
+    #                 "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
+    #                 r.json()['message'])
+    #
+    #     raise IDPException(r.json()['message'])
 
     def get_IDP_new_authorization(self, clientId=None, clientSecret=None):
         if clientId is None or clientSecret is None:
@@ -192,10 +193,13 @@ class OauthClient(object):
         """
         if self.last_authorization_time is None:
             raise IDPException('oauth client needs to be initialized and created successfully before refresh_oauth')
-        if int(time.time() * 1000) - self.last_authorization_time > refresh_interval * 1000:
-            if self.oauth_type == 'oauth':
-                self.get_IDP_authorization(self.authorization)
-            elif self.oauth_type == 'oauth2':
+        if refresh_interval == 0:
+            pass
+        elif int(time.time() * 1000) - self.last_authorization_time > refresh_interval * 1000:
+            # if self.oauth_type == 'oauth':
+            #     self.get_IDP_authorization(self.authorization)
+            # elif self.oauth_type == 'oauth2':
+            if self.oauth_type == 'oauth2':
                 self.get_IDP_new_authorization(self.client_id, self.client_secret)
             else:
                 raise IDPConfigurationException(
@@ -295,6 +299,7 @@ class Client(object):
                 trash_bin.append(key)
         for key in trash_bin:
             del data[key]
+        self.refresh_token()
         r = requests.post(self.extraction_async_create_url, headers=self.headers,
                           files=files, data=data)
         if r.ok:
@@ -310,7 +315,7 @@ class Client(object):
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
-
+        self.refresh_token()
         r = requests.get(self.extraction_result_url + str(task_id), headers=self.headers)
         if r.ok:
             return r.json()
@@ -360,6 +365,7 @@ class Client(object):
         for key in trash_bin:
             del data[key]
         # print(data)
+        self.refresh_token()
         r = requests.get(self.extraction_task_history_url, headers=self.headers, params=data)
         if r.ok:
             return r.json()
@@ -391,6 +397,7 @@ class Client(object):
         for key in trash_bin:
             del data[key]
         # print(data)
+        self.refresh_token()
         r = requests.post(self.extraction_task_add_hitl_url, headers=self.headers, json=data)
         if r.ok:
             return r.json()
@@ -486,6 +493,7 @@ class Client(object):
         for key in trash_bin:
             del data[key]
         # print(data)
+        self.refresh_token()
         r = requests.post(self.extraction_faas_create_url, headers=self.headers, files=files, data=data)
         if r.ok:
             return Task(r.json())
@@ -500,6 +508,7 @@ class Client(object):
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        self.refresh_token()
         r = requests.get(self.extraction_faas_status_url + str(task_id), headers=self.headers)
         if r.ok:
             return r.json()['data']['analysisStatus']
@@ -515,6 +524,7 @@ class Client(object):
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        self.refresh_token()
         r = requests.get(self.extraction_faas_result_url + str(task_id), headers=self.headers)
         return r.json()
         # return FaasTaskResult(r.json())
@@ -528,6 +538,7 @@ class Client(object):
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        self.refresh_token()
         r = requests.get(self.extraction_faas_export_url + str(task_id), headers=self.headers)
         # you might need to read the r.content as a result zip file
         if 'errorCode' in r.text:
@@ -574,6 +585,7 @@ class Client(object):
         for key in trash_bin:
             del data[key]
         # print(data)
+        self.refresh_token()
         r = requests.post(self.extraction_doc_agent_create_url, headers=self.headers, files=files, data=data)
         if r.ok:
             return Task(r.json())
@@ -585,6 +597,7 @@ class Client(object):
         """
         if applicationId is None:
             raise IDPException("applicationId is required")
+        self.refresh_token()
         r = requests.post(self.extraction_doc_agent_status_url + applicationId, headers=self.headers)
         if r.ok:
             return r.json()
@@ -597,6 +610,7 @@ class Client(object):
         """
         if applicationId is None:
             raise IDPException("applicationId is required")
+        self.refresh_token()
         r = requests.post(self.extraction_doc_agent_export_url + applicationId, headers=self.headers)
         if r.ok:
             return r.content
