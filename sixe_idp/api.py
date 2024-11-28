@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import time
 from enum import Enum
 
@@ -28,46 +29,124 @@ def build_sha256_str(clientId, clientSecret, timestamp):
     return sha256_hash
 
 
+def compute_hmac_sha256(key, message):
+    """
+    return the hmac_sha256 of the message with the given key and message
+    param key: the key to be used for hmac
+        :type key: str
+    param message: the message to be used for hmac
+        :type message: str
+    """
+    hasher = hmac.new(key.encode('utf-8'), message, hashlib.sha256)
+    hash_result = hasher.hexdigest()
+    return hash_result
+
+
+def verify_app_header(payload, sig_header_signature, secret):
+    """
+    return verify the signature of the payload and compare with the given one
+    param payload: the payload to be verified
+        :type payload: str
+    param sig_header_signature: the signature to be compared with
+        :type sig_header_signature: str
+    param secret: the secret to be used for hmac
+        :type secret: str
+    """
+    expected_signature = None
+    try:
+        expected_signature = compute_hmac_sha256(secret, payload.encode('utf-8'))
+    except Exception as e:
+        raise IDPException("Unable to compute signature for payload", sig_header_signature)
+
+    if expected_signature != sig_header_signature:
+        return False
+        # raise IDPException("Signature found not match the expected signature for payload", sig_header_signature)
+    else:
+        return True
+
+
+def verify_app_header_for_mode2(result_bytes, file_bytes, sig_header_signature, secret):
+    """
+    return verify the signature of the payload and compare with the given one for callback mode 2
+    param result_bytes
+    """
+    combined_array = result_bytes + file_bytes
+    mode2_verify = verify_app_header(combined_array, sig_header_signature, secret)
+    return mode2_verify
+
+
+def verify_app_header_for_mode3(result_bytes, file_bytes, result_in_excel_bytes, result_in_json_bytes,
+                                sig_header_signature, secret):
+    """
+    return verify the signature of the payload and compare with the given one for callback mode 3
+    """
+    combined_array = result_bytes + file_bytes + result_in_excel_bytes + result_in_json_bytes
+    mode3_verify = verify_app_header(combined_array, sig_header_signature, secret)
+    return mode3_verify
+
+
 class OauthClient(object):
-    def __init__(self, region=None):
+    def __init__(self, oauth_type='oauth2', oauth_authorization_url=None, oauth2_authorization_url=None, client_id=None,
+                 client_secret=None, authorization=None):
         """
         Initializes the Oauth Client
-
-        :param region: IDP Region to make requests to, e.g. 'test'
-        :type region: str
         :returns: :class:`OauthClient <OauthClient>`
         :rtype: sixe_idp.api.OauthClient
+        :Combination of those params can be, and you directly get a oauthClient with successful authorization
+            1. oauth_type='oauth', oauth_authorization_url,authorization
+            2. oauth_type='oauth2', oauth2_authorization_url,client_id,client_secret
+        :Combination of init OauthClient,but you still need to get authorization manually
+            1. oauth_authorization_url, and you need get_IDP_authorization manually
+            2. oauth2_authorization_url, and you need get_IDP_new_authorization manually
+        : For possible network change, you need to input the full host name for oauth_authorization_url or oauth2_authorization_url,
+        Like https://oauth-sea.6estates.com/api/token for oauth2
+        https://oauth-sea.6estates.com/oauth/token?grant_type=client_bind for oauth
         """
 
-        if region not in ['test', 'sea']:
-            raise IDPConfigurationException(
-                "Region is required and limited in ['test','sea']")
-        self.region = region
+        self.oauth_type = oauth_type  # Can be oauth, oauth2, x_access_token
+        # self.authorization_url = f"https://oauth{region}.6estates.com/oauth/token?grant_type=client_bind"
+        self.oauth_authorization_url = oauth_authorization_url
+        self.oauth2_authorization_url = oauth2_authorization_url
+        self.authorization = authorization
+        # self.new_authorization_url = f"https://oauth{region}.6estates.com/api/token"
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.token_header = None
+        self.last_authorization_time = None
 
-        if region == 'test':
-            region = '-onp'
+        if oauth_authorization_url is None and oauth2_authorization_url is None:
+            raise IDPException("need at least one url to get authorization")
+
+        if oauth_type == 'oauth':
+            if authorization is not None:
+                self.get_IDP_authorization(authorization)
+            else:
+                print(
+                    "authorization is required for OauthClient,please use get_IDP_authorization to successfully get authorization")
+        elif oauth_type == 'oauth2':
+            if client_id is not None and client_secret is not None:
+                self.get_IDP_new_authorization(client_id, client_secret)
+            else:
+                print("client_id and client_secret are required for Oauth2Client")
         else:
-            region = '-' + region
-        self.url_post = f"https://oauth{region}.6estates.com/oauth/token?grant_type=client_bind"
-        self.new_authorization_url = f"https://oauth{region}.6estates.com/api/token"
-        self.clientId = None
-        self.clientSecret = None
+            raise IDPException("oauth_type must be oauth or oauth2")
 
-    def get_IDP_authorization(self, authorization=None):
+    def get_IDP_authorization(self, authorization):
         """
         :param authorization: Client's authorization
         :type authorization: str
         """
-        if authorization is None:
-            raise IDPConfigurationException('Authorization is required')
+        if self.authorization is None:
+            raise IDPConfigurationException('authorization is required for OauthClient')
         self.authorization = authorization
-
+        self.oauth_type = 'oauth'
         headers = {"Authorization": self.authorization}
-        r = requests.post(self.url_post, headers=headers)
+        r = requests.post(self.oauth_authorization_url, headers=headers)
 
         if r.ok:
-            if r.json()['data']['expired'] == False:
-                return r.json()['data']['value']
+            if not r.json()['data']['expired']:
+                self.last_authorization_time = int(time.time() * 1000)
+                self.set_token_header(r.json()['data']['value'])
             else:
                 raise IDPException(
                     "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
@@ -77,72 +156,87 @@ class OauthClient(object):
 
     def get_IDP_new_authorization(self, clientId=None, clientSecret=None):
         if clientId is None or clientSecret is None:
-            raise IDPConfigurationException('clientId&clientSecret are required')
-        self.clientId = clientId
-        self.clientSecret = clientSecret
+            raise IDPConfigurationException('clientId&clientSecret are required for oauth2')
+        self.client_id = clientId
+        self.client_secret = clientSecret
+        self.oauth_type = 'oauth2'
 
         headers = {"Content-Type": "application/json"}
         current_timestamp = int(time.time() * 1000)
-        signature = build_sha256_str(self.clientId, self.clientSecret, current_timestamp)
+        signature = build_sha256_str(self.client_id, self.client_secret, current_timestamp)
         data = {
             "clientId": clientId,
             "timestamp": current_timestamp,
             "signature": signature
         }
 
-        r = requests.post(self.new_authorization_url, headers=headers, json=data)
+        r = requests.post(self.oauth2_authorization_url, headers=headers, json=data)
         if r.ok:
-            if r.json()['data']['expired'] == False:
-                return r.json()['data']['value']
+            if not r.json()['data']['expired']:
+                self.last_authorization_time = int(time.time() * 1000)
+                self.set_token_header(r.json()['data']['value'])
             else:
                 raise IDPException(
                     "This IDP Authorization is expired, please re-send the request to get new IDP Authorization. " +
                     r.json()['message'])
+        else:
+            raise IDPException(r.json()['message'])
 
-        raise IDPException(r.json()['message'])
+    def set_token_header(self, server_authorization_value):
+        self.token_header = {"Authorization": server_authorization_value}
+
+    def refresh_oauth(self, refresh_interval=90):
+        """
+        refresh_interval: minutes to last refresh oauth token
+        Refreshes the oauth token, if
+        """
+        if self.last_authorization_time is None:
+            raise IDPException('oauth client needs to be initialized and created successfully before refresh_oauth')
+        if int(time.time() * 1000) - self.last_authorization_time > refresh_interval * 60 * 1000:
+            if self.oauth_type == 'oauth':
+                self.get_IDP_authorization(self.authorization)
+            elif self.oauth_type == 'oauth2':
+                self.get_IDP_new_authorization(self.client_id, self.client_secret)
+            else:
+                raise IDPConfigurationException(
+                    'oauth client needs to be initialized and created successfully before refresh_oauth')
+        else:
+            pass
 
 
 class Client(object):
-    def __init__(self, region=None, token=None, isOauth=False):
+    def __init__(self, http_host, oauth_client: OauthClient):
         """
         Initializes the IDP Client
-
-        :param token: Client's token
-        :type token: str
-        :param region: IDP Region to make requests to, e.g. 'test'
-        :param bool isOauth: Oauth 2.0 flag
-        :type token: str
-        :returns: :class:`Client <Client>`
-        :rtype: sixe_idp.api.Client
+        :param http_host: need full host url, e.g. https://idp-sea.6estates.com
+        :param oauth_client: OauthClient object
+        :returns: :class:`Client <Client>` object
         """
-        if token is None:
-            raise IDPConfigurationException('Token is required')
-        if region not in ['test', 'sea']:
-            raise IDPConfigurationException(
-                "Region is required and limited in ['test','sea']")
-        self.region = region
-        self.token = token
-        self.isOauth = isOauth
-        self.headers = {"Authorization": self.token} if self.isOauth else {"X-ACCESS-TOKEN": self.token}
+        self.http_host = http_host.rstrip('/')
+        self.oauth_client = oauth_client
+        self.headers = self.oauth_client.token_header
 
-        self.extraction_task = ExtractionTaskClient(token=token, region=region, isOauth=self.isOauth)
-        self.faas_extraction_task = FaasExtractionTaskClient(token=token, region=region, isOauth=self.isOauth)
-        if region == 'test':
-            url_region = ''
-        else:
-            url_region = '-' + region
-        self.extraction_async_create_url = f"https://idp{url_region}.6estates.com/customer/extraction/fields/async"
-        self.extraction_result_url = f"https://idp{url_region}.6estates.com/customer/extraction/field/async/result/"
-        self.extraction_task_history_url = f"https://idp{url_region}.6estates.com/customer/extraction/history/list"
-        self.extraction_task_add_hitl_url = f"https://idp{url_region}.6estates.com/customer/extraction/task/to_hitl"
+        self.extraction_async_create_url = f"{http_host}/customer/extraction/fields/async"
+        self.extraction_result_url = f"{http_host}/customer/extraction/field/async/result/"
+        self.extraction_task_history_url = f"{http_host}/customer/extraction/history/list"
+        self.extraction_task_add_hitl_url = f"{http_host}/customer/extraction/task/to_hitl"
 
-        self.extraction_faas_create_url = f"https://idp{url_region}.6estates.com/customer/extraction/faas/analysis"
-        self.extraction_faas_export_url = f"https://idp{url_region}.6estates.com/customer/extraction/faas/analysis/export/"
-        self.extraction_faas_result_url = f"https://idp{url_region}.6estates.com/customer/extraction/faas/analysis/result/"
+        self.extraction_faas_create_url = f"{http_host}/customer/extraction/faas/analysis"
+        self.extraction_faas_status_url = f"{http_host}/customer/extraction/faas/analysis/status/"
+        self.extraction_faas_export_url = f"{http_host}/customer/extraction/faas/analysis/export/"
+        self.extraction_faas_result_url = f"{http_host}/customer/extraction/faas/analysis/result/"
 
-        self.extraction_doc_agent_create_url = f"https://idp{url_region}.6estates.com/customer/extraction/doc_agent/analysis"
-        self.extraction_doc_agent_status_url = f"https://idp{url_region}.6estates.com/customer/extraction/doc_agent/status/"
-        self.extraction_doc_agent_export_url = f"https://idp{url_region}.6estates.com/customer/extraction/doc_agent/analysis/export/"
+        self.extraction_doc_agent_create_url = f"{http_host}/customer/extraction/doc_agent/analysis"
+        self.extraction_doc_agent_status_url = f"{http_host}/customer/extraction/doc_agent/status/"
+        self.extraction_doc_agent_export_url = f"{http_host}/customer/extraction/doc_agent/analysis/export/"
+
+    def refresh_token(self, refresh_interval=90):
+        """
+        refresh_interval: minutes to last refresh oauth token
+        Refreshes the oauth client token, if
+        """
+        self.oauth_client.refresh_oauth(refresh_interval)
+        return self
 
     def extraction_async_create(self, file=None, file_type=None, fileTypeFrom=None,
                                 lang=None,
@@ -303,30 +397,30 @@ class Client(object):
         raise IDPException(r.json()['message'])
 
     def extraction_faas_create(self, files,
-                              customerType: int,
-                              countryId: str = None,
-                              regionId: str = None,
-                              informationType: int = None,
-                              cifNumber: str = None,
-                              borrowerName: str = None,
-                              loanAmount: float = None,
-                              applicationNumber: str = None,
-                              applicationDate: str = None,
-                              currency: str = None,
-                              rateDateType: int = None,
-                              rateFrom: int = None,
-                              rateDate: str = None,
-                              automatic: bool = True,
-                              hitlType: int = 0,
-                              industryType: str = None,
-                              industryBiCode: str = None,
-                              ebitdaRatio: str = None,
-                              relatedParties: str = None,
-                              supplierBuyer: str = None,
-                              checkAccountStr: str = None,
-                              callbackUrl: str = None,
-                              autoCallback: bool = True,
-                              callbackMode: int = 0):
+                               customerType: int,
+                               countryId: str = None,
+                               regionId: str = None,
+                               informationType: int = None,
+                               cifNumber: str = None,
+                               borrowerName: str = None,
+                               loanAmount: float = None,
+                               applicationNumber: str = None,
+                               applicationDate: str = None,
+                               currency: str = None,
+                               rateDateType: int = None,
+                               rateFrom: int = None,
+                               rateDate: str = None,
+                               automatic: bool = True,
+                               hitlType: int = 0,
+                               industryType: str = None,
+                               industryBiCode: str = None,
+                               ebitdaRatio: str = None,
+                               relatedParties: str = None,
+                               supplierBuyer: str = None,
+                               checkAccountStr: str = None,
+                               callbackUrl: str = None,
+                               autoCallback: bool = True,
+                               callbackMode: int = 0):
         """
         Args:
             files (str): Support PDF/IMG/Zip file. Please make sure only pdf/image file in zip file.
@@ -396,6 +490,21 @@ class Client(object):
         if r.ok:
             return Task(r.json())
         raise IDPException(r.json()['message'])
+
+    def extraction_faas_status(self, task_id=None):
+        """
+        :param task_id: task_id
+        :type task_id: int
+
+        :returns: status and result of task
+        :rtype: :class:`TaskResult <TaskResult>`
+
+        """
+        r = requests.get(self.extraction_faas_status_url + str(task_id), headers=self.headers)
+        if r.ok:
+            return r.json()['data']['analysisStatus']
+        else:
+            raise IDPException(r.json()['message'])
 
     def extraction_faas_result(self, task_id=None):
         """
@@ -565,7 +674,8 @@ class ExtractionTaskClient(object):
 
     def create(self, file=None, file_type=None, lang=None,
                customer=None, customer_param=None, callback=None,
-               auto_callback=None, callback_mode=None, hitl=None, extractMode=ExtractMode.Regular, includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
+               auto_callback=None, callback_mode=None, hitl=None, extractMode=ExtractMode.Regular,
+               includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
         """
         :param file: Pdf/image file. Only one file is allowed to be uploaded each time
         :type file: file
