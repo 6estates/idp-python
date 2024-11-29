@@ -240,6 +240,7 @@ class Client(object):
         Refreshes the oauth client token, if
         """
         self.oauth_client.refresh_oauth(refresh_interval)
+        self.headers = self.oauth_client.token_header
         return self
 
     def extraction_async_create(self, file=None, file_type=None, fileTypeFrom=None,
