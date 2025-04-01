@@ -643,7 +643,7 @@ class Task(object):
 
     @property
     def task_id(self):
-        return self.raw['data']
+        return str(self.raw['data'])
 
 
 class TaskResult(object):
