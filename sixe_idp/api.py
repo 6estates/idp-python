@@ -86,7 +86,8 @@ def verify_app_header_for_mode3(result_bytes, file_bytes, result_in_excel_bytes,
 
 
 class OauthClient(object):
-    def __init__(self, oauth_type='oauth2', oauth_authorization_url=None, oauth2_authorization_url='https://oauth-sea.6estates.com/api/token', client_id=None,
+    def __init__(self, oauth_type='oauth2', oauth_authorization_url=None,
+                 oauth2_authorization_url='https://oauth-sea.6estates.com/api/token', client_id=None,
                  client_secret=None, authorization=None):
         """
         Initializes the Oauth Client
@@ -184,9 +185,13 @@ class OauthClient(object):
             raise IDPException(r.json()['message'])
 
     def set_token_header(self, server_authorization_value):
-        self.token_header = {"Authorization": server_authorization_value}
+        self.token_header = {
+            "Authorization": server_authorization_value,
+            # "Content-Type": "application/json",
+            # "accept": "*/*"
+        }
 
-    def refresh_oauth(self, refresh_interval=90*60):
+    def refresh_oauth(self, refresh_interval=90 * 60):
         """
         refresh_interval: seconds to last refresh oauth token
         Refreshes the oauth token, if
@@ -221,20 +226,26 @@ class Client(object):
         self.headers = self.oauth_client.token_header
 
         self.extraction_async_create_url = f"{http_host}/customer/extraction/fields/async"
-        self.extraction_result_url = f"{http_host}/customer/extraction/field/async/result/"
+        self.extraction_result_url = f"{http_host}/customer/extraction/field/async/result"
         self.extraction_task_history_url = f"{http_host}/customer/extraction/history/list"
         self.extraction_task_add_hitl_url = f"{http_host}/customer/extraction/task/to_hitl"
 
         self.extraction_faas_create_url = f"{http_host}/customer/extraction/faas/analysis"
-        self.extraction_faas_status_url = f"{http_host}/customer/extraction/faas/analysis/status/"
-        self.extraction_faas_export_url = f"{http_host}/customer/extraction/faas/analysis/export/"
-        self.extraction_faas_result_url = f"{http_host}/customer/extraction/faas/analysis/result/"
+        self.extraction_faas_status_url = f"{http_host}/customer/extraction/faas/analysis/status"
+        self.extraction_faas_export_url = f"{http_host}/customer/extraction/faas/analysis/export"
+        self.extraction_faas_result_url = f"{http_host}/customer/extraction/faas/analysis/result"
 
         self.extraction_doc_agent_create_url = f"{http_host}/customer/extraction/doc_agent/analysis"
-        self.extraction_doc_agent_status_url = f"{http_host}/customer/extraction/doc_agent/status/"
-        self.extraction_doc_agent_export_url = f"{http_host}/customer/extraction/doc_agent/analysis/export/"
+        self.extraction_doc_agent_status_url = f"{http_host}/customer/extraction/doc_agent/status"
+        self.extraction_doc_agent_export_url = f"{http_host}/customer/extraction/doc_agent/analysis/export"
 
-    def refresh_token(self, refresh_interval=90*60):
+        self.extraction_card_fields_url = f"{http_host}/customer/extraction/fields/sync/cards"
+
+        self.split_and_extraction_async_create_url = f"{http_host}/customer/extraction/split/ext/fields/async"
+        self.split_and_extraction_async_status_url = f"{http_host}/customer/extraction/split/ext/status"
+        self.split_and_extraction_async_export_url = f"{http_host}/customer/extraction/split/ext/download/zip"
+
+    def refresh_token(self, refresh_interval=90 * 60):
         """
         refresh_interval: seconds to last refresh oauth token
         Refreshes the oauth client token, if
@@ -307,17 +318,23 @@ class Client(object):
             return Task(r.json())
         raise IDPException(r.json()['message'])
 
-    def extraction_result(self, task_id=None):
+    def extraction_result(self, application_id=None):
         """
-        :param task_id: task_id
-        :type task_id: int
+        :param application_id: application_id
+        :type application_id: str
 
         :returns: status and result of task
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        if application_id is None:
+            raise IDPException("applicationId is required")
         self.refresh_token()
-        r = requests.get(self.extraction_result_url + str(task_id), headers=self.headers)
+        data = {"applicationId": application_id}
+        r = requests.post(self.extraction_result_url,
+                          headers=self.headers,
+                          json=data)
+        # r = requests.get(self.extraction_result_url + str(task_id), headers=self.headers)
         if r.ok:
             return r.json()
         raise IDPException(r.json()['message'])
@@ -431,7 +448,7 @@ class Client(object):
                                callbackMode: int = 0):
         """
         Args:
-            files (str): Support PDF/IMG/Zip file. Please make sure only pdf/image file in zip file.
+            files (files): Support PDF/IMG/Zip file. Please make sure only pdf/image file in zip file.
             customerType (str): Customer type: 1 means Individual/Retail or Consumer Loan, 2 means Company/Business or Productive Loan.
             countryId (str, optional): Id of country. Defaults to None.
             regionId (str, optional): Id of region. Defaults to None.
@@ -500,48 +517,66 @@ class Client(object):
             return Task(r.json())
         raise IDPException(r.json()['message'])
 
-    def extraction_faas_status(self, task_id=None):
+    def extraction_faas_status(self, application_id=None):
         """
-        :param task_id: task_id
-        :type task_id: int
+        :param application_id: application_id
+        :type application_id: str
 
         :returns: status and result of task
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        if application_id is None:
+            raise IDPException("applicationId is required")
         self.refresh_token()
-        r = requests.get(self.extraction_faas_status_url + str(task_id), headers=self.headers)
+        # r = requests.get(self.extraction_faas_status_url + str(task_id), headers=self.headers)
+        data = {"applicationId": application_id}
+        r = requests.post(self.extraction_faas_status_url,
+                          headers=self.headers,
+                          json=data)
         if r.ok:
             return r.json()['data']['analysisStatus']
         else:
             raise IDPException(r.json()['message'])
 
-    def extraction_faas_result(self, task_id=None):
+    def extraction_faas_result(self, application_id=None):
         """
-        :param task_id: task_id
-        :type task_id: int
+        :param application_id: application_id
+        :type application_id: str
 
         :returns: status and result of task
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        if application_id is None:
+            raise IDPException("applicationId is required")
         self.refresh_token()
-        r = requests.get(self.extraction_faas_result_url + str(task_id), headers=self.headers)
+        # r = requests.get(self.extraction_faas_result_url + str(task_id), headers=self.headers)
+        data = {"applicationId": application_id}
+        r = requests.post(self.extraction_faas_result_url,
+                          headers=self.headers,
+                          json=data)
         return r.json()
         # return FaasTaskResult(r.json())
 
-    def extraction_faas_export(self, task_id=None):
+    def extraction_faas_export(self, application_id=None):
         """
-        :param task_id: task_id
-        :type task_id: int
+        :param application_id: application_id
+        :type application_id: str
 
         :returns: status and result of task
         :rtype: :class:`TaskResult <TaskResult>`
 
         """
+        if application_id is None:
+            raise IDPException("applicationId is required")
         self.refresh_token()
-        r = requests.get(self.extraction_faas_export_url + str(task_id), headers=self.headers)
+        # r = requests.get(self.extraction_faas_export_url + str(task_id), headers=self.headers)
         # you might need to read the r.content as a result zip file
+        data = {"applicationId": application_id}
+        r = requests.post(self.extraction_faas_export_url,
+                          headers=self.headers,
+                          json=data)
         if 'errorCode' in r.text:
             raise IDPException(r.text)
         else:
@@ -552,7 +587,8 @@ class Client(object):
                                     callback: str = None,
                                     autoCallback: bool = None,
                                     callbackMode: int = None,
-                                    callbackQaCodes: str = None):
+                                    callbackQaCodes: str = None,
+                                    fileDocTypeList: list = []):
         """
         Args:
             flowCode (int): The code of task flow, please contact 6E admin to obtain the task flow code.
@@ -565,6 +601,8 @@ class Client(object):
                     mode 1: callback request contains task flow result file.
                     Default is 1.Later we will support more callback modes.
             callbackQaCodes (str, optional):Task flow Qa codes. When callbackMode == 1, if you want to pass only part of the task flow Qa result during the callback, you can control it through this parameter
+            The mapping relationship between file name and file type. The list object has four attributes: fileName: file name, zipName:zip name, if the file is a compressed file,fileType: file type, and fileTypeFrom: file type source. There are two values: 1: from 6e definition, 2: custom type. See the example below for details.
+
             For those params are not clearly defined, please refer to the API documentation. https://idp-sea.6estates.com/document
         """
         if file is None:
@@ -577,6 +615,7 @@ class Client(object):
             "autoCallback": autoCallback,
             "callbackMode": callbackMode,
             "callbackQaCodes": callbackQaCodes,
+            "fileDocTypeList": fileDocTypeList,
         }
         files = {"file": file}
         trash_bin = []
@@ -598,27 +637,160 @@ class Client(object):
         """
         if applicationId is None:
             raise IDPException("applicationId is required")
+        # self.refresh_token()
+        # r = requests.post(self.extraction_doc_agent_status_url + applicationId, headers=self.headers)
+        data = {"applicationId": applicationId}
         self.refresh_token()
-        r = requests.post(self.extraction_doc_agent_status_url + applicationId, headers=self.headers)
+        r = requests.post(self.extraction_doc_agent_status_url,
+                          headers=self.headers,
+                          json=data)
         if r.ok:
             return r.json()
         else:
             raise IDPException(r.json()['message'])
 
-    def extraction_doc_agent_export(self, applicationId):
+    def extraction_doc_agent_export(self, applicationId, task_codes=None):
         """
             Get the result of a task.
         """
         if applicationId is None:
             raise IDPException("applicationId is required")
+        data = {"applicationId": applicationId,
+                "taskCodes": task_codes}
+        # remove blank values
+        data = {k: v for k, v in data.items() if v is not None}
         self.refresh_token()
-        r = requests.post(self.extraction_doc_agent_export_url + applicationId, headers=self.headers)
+        # r = requests.post(self.extraction_doc_agent_export_url + applicationId, headers=self.headers)
+        r = requests.post(self.extraction_doc_agent_export_url,
+                          headers=self.headers,
+                          json=data)
         if r.ok:
             return r.content
         else:
             raise IDPException(r.json()['message'])
 
+    def extraction_card_fields_sync(self, file=None, file_type=None, lang='EN'):
+        """
+        Synchronously extract fields from a card image or PDF file.
+        :param file: Pdf/image file. Only one file is allowed to be uploaded each time
+        :type file: file
+        :param file_type: The code of the card file type (e.g., NPWP). Please see details of File Type Code
+        :type file_type: str
+        :param lang: Language, default is EN
+        :type lang: str
+        :return: JSON content of the extraction result
+        :rtype: dict
+        """
+        self.refresh_token()
+        if file is None:
+            raise IDPException("File is required")
+        if file_type is None:
+            raise IDPException("file_type is required")
 
+        files = {"file": file}
+        data = {'fileType': file_type, 'lang': lang}
+
+        # remove blank values
+        data = {k: v for k, v in data.items() if v is not None}
+
+        # self.refresh_token()
+        r = requests.post(self.extraction_card_fields_url,
+                          headers=self.headers,
+                          files=files,
+                          data=data)
+        if r.ok:
+            return r.json()
+        raise IDPException(r.json()['message'])
+
+    def split_and_extraction_async_create(self, file=None, group_id=None, lang='EN', hitl=None, extract_mode=None):
+        """
+        Asynchronously submit file for split and fields extraction.
+        The uploaded file will be split into one file per page, then each page will be identified and extracted.
+
+        :param file: Pdf file. Only one file is allowed to be uploaded each time
+        :type file: file
+        :param group_id: File type group id
+            1: "Invoice","Delivery Order","Purchase Order","Tanda Terima Receipt", "Faktur Pajak Tax Invoice"
+            2: "Air Waybill","Bill of Lading","Invoice","Packing List","Formulir Pengajuan Dokumen Ekspor"
+            3: "Kartu Tanda Penduduk","Bukti Kepemilikan Kendaraan Bermotor","Surat Tanda Nomer Kendaraan","Kartu Keluarga"
+        :type group_id: int
+        :param lang: Language, English: EN, Default is EN
+        :type lang: str
+        :param hitl: Enables Human-In-The-Loop service.
+            True: processed by AI + HITL, False: processed by AI only. Default is False.
+        :type hitl: bool
+        :param extract_mode: Fields extract version
+            1: Lite, 2: Regular, 3: Advance. Default is 2.
+        :type extract_mode: int
+        :return: Task object containing task id
+        :rtype: :class:`Task <Task>`
+        """
+        if file is None:
+            raise IDPException("File is required")
+        if group_id is None:
+            raise IDPException("group_id is required")
+
+        files = {"file": file}
+        data = {
+            'lang': lang,
+            'hitl': hitl,
+            'extractMode': extract_mode,
+            'groupId': group_id
+        }
+
+        # Remove None values
+        data = {k: v for k, v in data.items() if v is not None}
+
+        self.refresh_token()
+        r = requests.post(self.split_and_extraction_async_create_url,
+                          headers=self.headers,
+                          files=files,
+                          data=data)
+        if r.ok:
+            return Task(r.json())
+        raise IDPException(r.json()['message'])
+
+    def split_and_extraction_status(self, application_id=None):
+        """
+        get the split_and_extraction task status.
+        :param application_id: task ID
+        :type application_id: str
+        :return: Task or error message
+        :rtype: Task
+        """
+        if application_id is None:
+            raise IDPException("application_id is required")
+
+        data = {"applicationId": application_id}
+        self.refresh_token()
+        r = requests.post(self.split_and_extraction_async_status_url,
+                          headers=self.headers,
+                          json=data)
+        if r.ok:
+            return r.json()
+        raise IDPException(r.json()['message'])
+
+    def split_and_extraction_export(self, application_id=None):
+        """
+        download the task zip file for the split_and_extraction successfully completed task.
+        :param application_id: task ID
+        :type application_id: str
+        :return: Task or error message
+        :rtype: Task
+        """
+        self.refresh_token()
+        if application_id is None:
+            raise IDPException("application_id is required")
+
+        data = {"applicationId": application_id}
+        self.refresh_token()
+        r = requests.post(self.split_and_extraction_async_export_url,
+                          headers=self.headers,
+                          json=data)
+        if r.ok:
+            return r.content
+        else:
+            raise IDPException(r.json()['message'])
 class IDPException(Exception):
     """
         An IDP processing error occurred.
@@ -1032,4 +1204,3 @@ class FaasExtractionTaskClient(object):
             raise IDPException(r.text)
         else:
             return r.content
-
