@@ -142,10 +142,11 @@ Usage
     task = client.extraction_faas_create(files=files, customerType=1, countryId='100065', informationType=0)
     print(task.task_id)
 
-4.2  To Get FAAS Insight Analysis Status By Insight Analysis Application Id
+4.2 To Get FAAS Insight Analysis Status By Insight Analysis Application Id
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     application_id = '12345'
     status = client.extraction_faas_status(application_id=application_id)
     print(status)
@@ -317,6 +318,7 @@ Usage
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     from sixe_idp.api import Client, OauthClient, IDPException
     split_and_extraction_task = client.split_and_extraction_async_create(file=open("/your/path/uploaded/Split And Extraction file.pdf", "rb"),group_id=3,lang='EN',hitl=False,extract_mode=3)
     print(split_and_extraction_task.task_id)
@@ -325,6 +327,7 @@ Usage
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your split and extraction application_id id' # like SE123456789
     split_and_extraction_task_status = client.split_and_extraction_status(application_id=application_id)
@@ -334,6 +337,7 @@ Usage
 ~~~~~~~~~~~~
 
 .. code-block:: python
+
     from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your split and extraction application_id id' # like SE123456789
     split_and_extraction_task_content_bytes = client.split_and_extraction_export(application_id=application_id)
