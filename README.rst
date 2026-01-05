@@ -310,8 +310,8 @@ Usage
     run_simple_doc_agent_task(client, flowCode=flowCode, file_path=file_path, result_file_dir=result_file_dir)
 
 
-6.  Split And Extraction
-~~~~~~~~~~~~
+6. Split And Extraction
+--------------------------------------------------------------------
 
 6.1 Asynchronous Submit File for Split And Fields Extraction
 ~~~~~~~~~~~~
