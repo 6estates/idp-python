@@ -9,45 +9,51 @@
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
-  contents: read
+  contents: write  # 👈 必须改为 write，才能创建 Release！
 
 jobs:
   release-build:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，用于生成 changelog（可选）
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
 
-    - name: Build package
-      run: |
-          python -m pip install build
-          python -m build
+      - name: Build package
+        run: python -m build
 
-    - name: Upload distributions
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-dists
-        path: dist/
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true  # 自动生成 changelog（基于 commit）
+          files: dist/*                 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
 
   pypi-publish:
     runs-on: ubuntu-latest
-
-    needs:
-      - release-build
+    needs: [release-build]
     permissions:
       id-token: write
 
@@ -66,6 +72,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.PYPI_API_TOKEN }}        
           verbose: true
           print-hash: true
