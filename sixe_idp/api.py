@@ -4,6 +4,7 @@ import time
 from enum import Enum
 
 import requests
+from requests import Request, Session
 
 
 class ExtractMode(Enum):
@@ -244,6 +245,22 @@ class Client(object):
         self.split_and_extraction_async_create_url = f"{http_host}/customer/extraction/split/ext/fields/async"
         self.split_and_extraction_async_status_url = f"{http_host}/customer/extraction/split/ext/status"
         self.split_and_extraction_async_export_url = f"{http_host}/customer/extraction/split/ext/download/zip"
+
+        # Add these to Client.__init__
+        self.cross_doc_match_create_url = f"{http_host}/customer/extraction/cross_document_match/analysis"
+        self.cross_doc_match_status_url = f"{http_host}/customer/extraction/cross_document_match/status"
+        self.cross_doc_match_export_url = f"{http_host}/customer/extraction/cross_document_match/export/excel"
+        self.cross_doc_match_export_zip_url = f"{http_host}/customer/extraction/cross_document_match/export/zip"
+
+        # Add these to Client.__init__
+        self.fs_agent_create_url = f"{http_host}/customer/extraction/fs_agent/analysis"
+        self.fs_agent_status_url = f"{http_host}/customer/extraction/fs_agent/analysis/status"
+        self.fs_agent_export_url = f"{http_host}/customer/extraction/fs_agent/analysis/export"
+
+        # Add these to Client.__init__
+        self.doc_digitization_create_url = f"{http_host}/customer/extraction/digitization"
+        self.doc_digitization_status_url = f"{http_host}/customer/extraction/digitization/status"
+        self.doc_digitization_export_url = f"{http_host}/customer/extraction/digitization/export"
 
     def refresh_token(self, refresh_interval=90 * 60):
         """
@@ -791,6 +808,229 @@ class Client(object):
             return r.content
         else:
             raise IDPException(r.json()['message'])
+
+    def cross_doc_match_create(self, matchingGroupCode, fileParams, mergeFile=False, hitl=False):
+        """
+        :param matchingGroupCode: String, e.g., "CDM_GROUP_1"
+        :param fileParams: List of dicts, e.g.,
+                            [
+                                {'file': b'...', 'filename': 'a.pdf', 'docType': 'CBKS'},
+                                {'file': open('b.pdf', 'rb'), 'filename': 'b.pdf', 'detectionMode': '1'}
+                            ]
+        :param mergeFile: Boolean, default False
+        :param hitl: Boolean, default False
+        :return: Task
+        """
+        self.refresh_token()
+
+        # 1. Basic form data fields
+        data = {
+            'matchingGroupCode': matchingGroupCode,
+            'mergeFile': str(mergeFile).lower(),
+            'hitl': str(hitl).lower()
+        }
+
+        # 2. Build indexed multipart/form-data
+        # files list: [(field_name, (filename, content))]
+        files = []
+        for i, param in enumerate(fileParams):
+            content = param.get('file')  # bytes or file object
+            filename = param.get('filename')  # necessary for API to identify extension
+
+            # Map the file stream to indexed key: fileParams[i].file
+            files.append((f'fileParams[{i}].file', (filename, content)))
+
+            # Map other metadata to indexed data keys
+            if 'docType' in param:
+                data[f'fileParams[{i}].docType'] = param['docType']
+            if 'detectionMode' in param:
+                data[f'fileParams[{i}].detectionMode'] = param['detectionMode']
+
+        # Send request. requests library handles boundary and Content-Type automatically.
+        r = requests.post(self.cross_doc_match_create_url, headers=self.headers, files=files, data=data)
+
+        if r.ok:
+            # Based on common IDP response structure, ID is in data['applicationId']
+            # return r.json().get('data', {}).get('applicationId')
+            return Task(r.json())
+        raise IDPException(f"CDM Create Failed: {r.text}")
+
+    def cross_doc_match_status(self, application_id):
+        """
+        Ref Screenshot 3: Query the processing status of a submitted task.
+
+        :param application_id: The unique ID obtained from the creation step.
+        :return: Status code (0: init, 100: finish, -10: failed).
+        """
+        if application_id is None:
+            raise IDPException("applicationId is required")
+
+        self.refresh_token()
+        data = {"applicationId": application_id}
+        r = requests.post(self.cross_doc_match_status_url, headers=self.headers, json=data)
+
+        if r.ok:
+            # According to screenshot 3, status is returned in the 'data' field
+            return r.json().get('data')
+        raise IDPException(r.json().get('message', 'Failed to query task status'))
+
+    def cross_doc_match_result(self, application_id):
+        """
+        This method checks the status first; if finished (100), it downloads the file.
+        Otherwise, it notifies the user of the current abnormal/incomplete status.
+        """
+        status = self.cross_doc_match_status(application_id)
+
+        if status == 100:
+            self.refresh_token()
+            data = {"applicationId": application_id}
+            r = requests.post(self.cross_doc_match_export_url, headers=self.headers, json=data)
+            if r.ok:
+                return r.content  # Returns Excel binary content
+            raise IDPException("Failed to download Excel result")
+        elif status == 0:
+            raise IDPException("Task is still processing (Status: 0)")
+        elif status == -10:
+            raise IDPException("Task failed (Status: -10)")
+        else:
+            raise IDPException(f"Task status is abnormal or unknown: {status}")
+
+    def cross_doc_match_result_zip(self, application_id):
+        """
+        This method checks the status first; if finished (100), it downloads the file.
+        Otherwise, it notifies the user of the current abnormal/incomplete status.
+        """
+        status = self.cross_doc_match_status(application_id)
+
+        if status == 100:
+            self.refresh_token()
+            data = {"applicationId": application_id}
+            r = requests.post(self.cross_doc_match_export_zip_url, headers=self.headers, json=data)
+            if r.ok:
+                return r.content  # Returns Excel binary content
+            raise IDPException("Failed to download Excel result")
+        elif status == 0:
+            raise IDPException("Task is still processing (Status: 0)")
+        elif status == -10:
+            raise IDPException("Task failed (Status: -10)")
+        else:
+            raise IDPException(f"Task status is abnormal or unknown: {status}")
+
+    def fs_agent_create(self, file_content, filename, customer_type=1, hitl=False):
+        """
+
+        :param file_content: Bytes or file-like object of the PDF/IMG/Excel/Word file
+        :param filename: Name of the file (e.g., 'document.pdf').
+        :param customer_type: 1 General. The current system only supports the general type.
+                Default value: 1
+        :param hitl: Enables the Human-In-The-Loop (HITL) service.
+                    If the value is true, the submitted task will be processed by AI + HITL.
+                    Otherwise, the task will be processed by AI only.
+                Default value: false
+
+        :return: Task
+        """
+        self.refresh_token()
+
+        # Prepare multipart/form-data
+        files = {'files': (filename, file_content)}
+        data = {'customerType': customer_type, 'hitl': hitl}
+
+        r = requests.post(self.fs_agent_create_url, headers=self.headers, files=files, data=data)
+        if r.ok:
+            # Returns the applicationId from the 'data' field
+            # return r.json().get('data')
+            return Task(r.json())
+        raise IDPException(f"FS Agent Task Creation Failed: {r.text}")
+
+    def fs_agent_status(self, application_id: str):
+        """
+        :param application_id: The ID obtained from fs_agent_create.
+        :return: Status code (0: init, 1: on process, 2: finished, 3: finished-no issue, 4: failed-invalid, etc.)
+        """
+        if not application_id:
+            raise IDPException("application_id is required")
+
+        self.refresh_token()
+        data = {"applicationId": application_id}
+        r = requests.post(self.fs_agent_status_url, headers=self.headers, json=data)
+
+        if r.ok:
+            return r.json()['data']
+        else:
+            raise IDPException(r.json()['message'])
+
+    def fs_agent_get_result(self, application_id: str):
+        """
+        :param application_id: The ID obtained from fs_agent_create.
+        :return: docx file result content.
+        """
+        self.refresh_token()
+        # Status 2 (Finished - Check Document Insight) or 3 (Finished - No Issue) are successful
+
+        data = {"applicationId": application_id}
+        r = requests.post(self.fs_agent_export_url, headers=self.headers, json=data)
+        if r.ok:
+            return r.content  # Returns the binary file content (PDF/Excel report)
+        raise IDPException(f"FS Agent Export Failed despite successful status,{r.text}")
+
+    def doc_digitization_create(self, file_content, filename):
+        """
+        Pdf/image file. Only one file is allowed to be uploaded each time.
+            The file size should not exceed 50M, and the page number should not exceed 30 pages.
+        :param file_content: Bytes or file-like object (PDF/Image).
+        :param filename: Name of the file, e.g., 'invoice.pdf'.
+        :return: Task
+        """
+        self.refresh_token()
+
+        # Prepare multipart/form-data
+        files = {'file': (filename, file_content)}
+
+        r = requests.post(self.doc_digitization_create_url, headers=self.headers, files=files)
+        if r.ok:
+            # Returns applicationId from the 'data' field
+            # return r.json().get('data')
+            return Task(r.json())
+        raise IDPException(f"Digitization Task Creation Failed: {r.text}")
+
+    def doc_digitization_status(self, application_id: str):
+        """
+        Query Document Digitization Application Status
+        :param application_id: The ID returned from doc_digitization_create.
+        :return: Task Status
+        """
+        if not application_id:
+            raise IDPException("applicationId is required")
+
+        self.refresh_token()
+        data = {"applicationId": application_id}
+        r = requests.post(self.doc_digitization_status_url, headers=self.headers, json=data)
+
+        if r.ok:
+            return r.json()['data']
+        raise IDPException(f"Digitization Status Query Failed: {r.text}")
+
+    def doc_digitization_result(self, application_id: str, result_type: int, font_size=None):
+        """
+        Query Document Digitization Application Result
+        :param application_id: The ID returned from doc_digitization_create.
+        :param result_type: Support three type results,1:Word(1), 2:Txt(2) 3: Json
+        :param font_size: This only applies when retrieving Word files.
+                        It supports font sizes 8/10/12.
+                        If not uploaded, the Word font size will be the default size extracted from the file
+
+        """
+
+        self.refresh_token()
+        data = {"applicationId": application_id, "type": result_type, "fontSize": font_size}
+        data = {k: v for k, v in data.items() if v is not None}
+        r = requests.post(self.doc_digitization_export_url, headers=self.headers, json=data)
+        if r.ok:
+            return r.content
+        raise IDPException(f"Digitization Export Failed, {r.text}")
+
+
 class IDPException(Exception):
     """
         An IDP processing error occurred.

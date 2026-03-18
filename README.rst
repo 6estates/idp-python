@@ -343,3 +343,137 @@ Usage
     split_and_extraction_task_content_bytes = client.split_and_extraction_export(application_id=application_id)
     with open(f'/your/path/download/{application_id}.zip', 'wb') as f:
         f.write(split_and_extraction_task_content_bytes)
+
+
+7. Document Digitization
+--------------------------------------------------------------------
+
+7.1 Asynchronous API of Digitization
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    doc_digitization_task = client.doc_digitization_create(file_content=open("/your/path/uploaded/doc_digitization file",'rb'), filename='your doc_digitization file name')
+    application_id = doc_digitization_task.task_id
+    print(application_id)
+
+7.2 Query Document Digitization Application Status
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your doc_digitization application_id'
+    doc_digitization_task_status = client.doc_digitization_status(application_id=application_id)
+    print(doc_digitization_task_status)
+
+7.3 Query Document Digitization Application Result
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your doc_digitization application_id'
+    doc_digitization_bytes = client.doc_digitization_result(application_id=application_id,result_type=1)
+    if doc_digitization_bytes:
+        with open(f'/your/path/download/{application_id}.docx', 'wb') as f:
+            f.write(doc_digitization_bytes)
+
+
+8. FS Agent
+--------------------------------------------------------------------
+
+8.1 Asynchronous Submit File For FS Agent
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    fs_agent_task = client.fs_agent_create(file_content=open("/your/path/uploaded/FS Agent file",'rb'), filename='your FS Agent file name')
+    application_id = fs_agent_task.task_id
+    print(application_id)
+
+8.2 Query FS Agent Application Status
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your FS Agent application_id'
+    fs_agent_task_status = client.fs_agent_status(application_id=application_id)
+    print(fs_agent_task_status)
+
+8.3 Export Result of FS Agent Application
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your FS Agent application_id'
+    fs_agent_task_result_bytes = client.fs_agent_get_result(application_id=application_id)
+    if fs_agent_task_result_bytes:
+        with open(f'/your/path/download/{application_id}.docx', 'wb') as f:
+            f.write(fs_agent_task_result_bytes)
+
+9. Cross Document Matching
+--------------------------------------------------------------------
+
+9.1 Asynchronous Submit File For Cross Document Matching
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+
+    params = [
+        {
+            'file': open("/your/path/uploaded/your Cross Document Matching file", "rb"),
+            'filename': 'your 1st Cross Document Matching file name',
+            'docType': 'CBKS'
+        },
+        {
+            'file': open("/your/path/uploaded/your Cross Document Matching file", "rb"),
+            'filename': 'your 2nd Cross Document Matching file name',
+            'detectionMode': 1
+        }
+    ]
+
+    cross_doc_match_task = client.cross_doc_match_create(matchingGroupCode="Contact 6E to obtain code", params, mergeFile=False, hitl=False)
+    application_id = cross_doc_match_task.task_id
+    print(application_id)
+
+
+9.2 Query Cross Document Matching Application Status
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your Cross Document Matching application_id'
+    cross_doc_match_task_status = client.cross_doc_match_status(application_id=application_id)
+    print(cross_doc_match_task_status)
+
+9.3 Download Cross Document Matching Result (Excel)
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your Cross Document Matching application_id'
+    cross_doc_match_task_result_bytes = client.cross_doc_match_result(application_id=application_id)
+    if cross_doc_match_task_result_bytes:
+        with open(f'/your/path/download/{application_id}.xlsx', 'wb') as f:
+            f.write(cross_doc_match_task_result_bytes)
+
+9.4 Download Cross Document Matching Result Data Package (ZIP)
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from sixe_idp.api import Client, OauthClient, IDPException
+    application_id = 'your Cross Document Matching application_id'
+    cross_doc_match_task_result_zip = client.cross_doc_match_result_zip(application_id=application_id)
+    if cross_doc_match_task_result_zip:
+        with open(f'/your/path/download/{application_id}.zip', 'wb') as f:
+            f.write(cross_doc_match_task_result_zip)
