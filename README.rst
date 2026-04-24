@@ -477,3 +477,15 @@ Usage
     if cross_doc_match_task_result_zip:
         with open(f'/your/path/download/{application_id}.zip', 'wb') as f:
             f.write(cross_doc_match_task_result_zip)
+
+
+10. AI Chat Completion
+--------------------------------------------------------------------
+
+10.1 Create AI Chat Completion
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    ai_response = client.ai_chat_completion(model = 'model_6e_ext_v3',messages=[{"content":"What is the meaning of life?","role":"user"}])
+    print(response)

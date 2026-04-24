@@ -262,6 +262,9 @@ class Client(object):
         self.doc_digitization_status_url = f"{http_host}/customer/extraction/digitization/status"
         self.doc_digitization_export_url = f"{http_host}/customer/extraction/digitization/export"
 
+        # Add to Client.__init__
+        self.ai_chat_completion_url = f"{http_host}/customer/extraction/ai/chat"
+
     def refresh_token(self, refresh_interval=90 * 60):
         """
         refresh_interval: seconds to last refresh oauth token
@@ -1030,7 +1033,60 @@ class Client(object):
             return r.content
         raise IDPException(f"Digitization Export Failed, {r.text}")
 
+    def ai_chat_completion(self, model: str, messages: list, temperature: float = None,
+                           top_p: float = None, max_tokens: int = None, n: int = None,
+                           presence_penalty: float = None, frequency_penalty: float = None,
+                           reasoning_effort: str = None):
+        """
+        Given a list of messages comprising a conversation, the API will return a response to the messages.
 
+        :param model: Choose model: model_6e_ext_v3, model_6e_ext_v4, model_6e_ext_v5.
+        :type model: str
+        :param messages: A list of dicts comprising the conversation.
+                         Example: [{"role": "user", "content": "where is china"}]
+        :type messages: list
+        :param temperature: between 0 and 2. Defaults to 1.
+        :type temperature: float
+        :param top_p: nucleus sampling threshold. Defaults to 1.
+        :type top_p: float
+        :param max_tokens: The maximum number of tokens to generate.
+        :type max_tokens: int
+        :param n: How many chat completion answers to generate for each input message. Defaults to 1.
+        :type n: int
+        :param presence_penalty: Number between -2.0 and 2.0. Defaults to 0.
+        :type presence_penalty: float
+        :param frequency_penalty: Number between -2.0 and 2.0. Defaults to 0.
+        :type frequency_penalty: float
+        :param reasoning_effort: Constrains effort on reasoning ('none', 'minimal', 'low', 'medium', 'high', 'max').
+        :type reasoning_effort: str
+
+        :return: JSON response from the API directly.
+        :rtype: dict
+        """
+        self.refresh_token()
+
+        data = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": max_tokens,
+            "n": n,
+            "presence_penalty": presence_penalty,
+            "frequency_penalty": frequency_penalty,
+            "reasoning_effort": reasoning_effort
+        }
+
+        # Remove keys with None values to allow server defaults to apply
+        data = {k: v for k, v in data.items() if v is not None}
+
+        # Use json=data to automatically set Content-Type to application/json
+        r = requests.post(self.ai_chat_completion_url, headers=self.headers, json=data)
+
+        if r.ok:
+            return r.json()
+
+        raise IDPException(f"AI Chat Completion Failed: {r.text}")
 class IDPException(Exception):
     """
         An IDP processing error occurred.
