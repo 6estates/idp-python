@@ -1226,8 +1226,8 @@ class ExtractionTaskClient(object):
                auto_callback=None, callback_mode=None, hitl=None, extractMode=ExtractMode.Regular,
                includingFieldCodes=None, autoChecks=None, fileTypeFrom=None, remark=None) -> Task:
         """
-        :param file: Pdf/image file. Only one file is allowed to be uploaded each time
-        :type file: file
+        :param file: Pdf/image file or a list of files to upload into one application
+        :type file: file or list
         :param file_type: The str of the file type (e.g., CBKS), this could be CBKS,CINV those publick file type and can also be self-defined file type if fileTypeFrom is set to be 2
         :type file_type: str
         :param lang: English: EN, Default is EN
@@ -1267,7 +1267,7 @@ class ExtractionTaskClient(object):
             headers = {"Authorization": self.token}
         else:
             headers = {"X-ACCESS-TOKEN": self.token}
-        files = {"file": file}
+        files = _normalize_multipart_files("file", file)
         data = {'fileType': file_type, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,

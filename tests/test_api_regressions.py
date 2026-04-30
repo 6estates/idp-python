@@ -14,6 +14,7 @@ sys.modules.setdefault("requests", requests_stub)
 
 from sixe_idp.api import (
     Client,
+    ExtractionTaskClient,
     IDPException,
     Task,
     compute_hmac_sha256,
@@ -68,6 +69,20 @@ class ApiRegressionTests(unittest.TestCase):
             )
 
         self.assertEqual("APP123", task.application_id)
+        self.assertEqual(
+            [("file", ("bank-1.pdf", b"one")), ("file", ("bank-2.pdf", b"two"))],
+            post.call_args.kwargs["files"],
+        )
+
+    def test_legacy_extraction_create_accepts_multiple_files(self):
+        client = ExtractionTaskClient(token="token", region="sea", isOauth=True)
+
+        with patch("sixe_idp.api.requests.post", return_value=FakeResponse()) as post:
+            client.create(
+                file=[("bank-1.pdf", b"one"), ("bank-2.pdf", b"two")],
+                file_type="CBKS",
+            )
+
         self.assertEqual(
             [("file", ("bank-1.pdf", b"one")), ("file", ("bank-2.pdf", b"two"))],
             post.call_args.kwargs["files"],
