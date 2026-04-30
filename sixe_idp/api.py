@@ -1154,15 +1154,19 @@ class IDPConfigurationException(Exception):
 
 class Task(object):
     """
-        The :class:`Task <Task>` object, which contains a server's response to an IDP task creating request.
+        The :class:`Task <Task>` object, which contains a server's response to an IDP application creating request.
     """
 
     def __init__(self, raw=None):
         self.raw = raw
 
     @property
-    def task_id(self):
+    def application_id(self):
         return str(self.raw['data'])
+
+    @property
+    def task_id(self):
+        return self.application_id
 
 
 class TaskResult(object):
