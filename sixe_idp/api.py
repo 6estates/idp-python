@@ -835,7 +835,7 @@ class Client(object):
     def split_and_extraction_status(self, application_id=None):
         """
         get the split_and_extraction task status.
-        :param application_id: task ID
+        :param application_id: application ID
         :type application_id: str
         :return: Task or error message
         :rtype: Task
@@ -855,7 +855,7 @@ class Client(object):
     def split_and_extraction_export(self, application_id=None):
         """
         download the task zip file for the split_and_extraction successfully completed task.
-        :param application_id: task ID
+        :param application_id: application ID
         :type application_id: str
         :return: Task or error message
         :rtype: Task

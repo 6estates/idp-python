@@ -372,7 +372,7 @@ Usage
 .. code-block:: python
 
     from sixe_idp.api import Client, OauthClient, IDPException
-    application_id = 'your split and extraction application_id id' # like SE123456789
+    application_id = 'your split and extraction application_id' # like SE123456789
     split_and_extraction_task_status = client.split_and_extraction_status(application_id=application_id)
     print(split_and_extraction_task_status)
 
@@ -382,7 +382,7 @@ Usage
 .. code-block:: python
 
     from sixe_idp.api import Client, OauthClient, IDPException
-    application_id = 'your split and extraction application_id id' # like SE123456789
+    application_id = 'your split and extraction application_id' # like SE123456789
     split_and_extraction_task_content_bytes = client.split_and_extraction_export(application_id=application_id)
     with open(f'/your/path/download/{application_id}.zip', 'wb') as f:
         f.write(split_and_extraction_task_content_bytes)

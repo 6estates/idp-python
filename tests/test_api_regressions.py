@@ -164,6 +164,21 @@ class ApiRegressionTests(unittest.TestCase):
             with self.assertRaises(IDPException):
                 client.extraction_faas_result("FAAS123")
 
+    def test_faas_export_returns_success_content_even_if_body_mentions_error_code(self):
+        client = self.make_client()
+        response = FakeResponse(ok=True, content=b"xlsx", text='{"errorCode":0}')
+
+        with patch("sixe_idp.api.requests.post", return_value=response):
+            self.assertEqual(b"xlsx", client.extraction_faas_export("FAAS123"))
+
+    def test_faas_export_raises_idp_exception_on_error_response(self):
+        client = self.make_client()
+        response = FakeResponse(ok=False, payload={"message": "export failed"}, text="export failed")
+
+        with patch("sixe_idp.api.requests.post", return_value=response):
+            with self.assertRaises(IDPException):
+                client.extraction_faas_export("FAAS123")
+
 
 if __name__ == "__main__":
     unittest.main()
