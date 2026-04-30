@@ -730,7 +730,8 @@ class Client(object):
             return r.json()
         raise IDPException(r.json()['message'])
 
-    def split_and_extraction_async_create(self, file=None, group_id=None, lang='EN', hitl=None, extract_mode=None):
+    def split_and_extraction_async_create(self, file=None, group_id=None, lang='EN', hitl=None, extract_mode=None,
+                                          detect_mode=None):
         """
         Asynchronously submit file for split and fields extraction.
         The uploaded file will be split into one file per page, then each page will be identified and extracted.
@@ -747,9 +748,10 @@ class Client(object):
         :param hitl: Enables Human-In-The-Loop service.
             True: processed by AI + HITL, False: processed by AI only. Default is False.
         :type hitl: bool
-        :param extract_mode: Fields extract version
-            1: Lite, 2: Regular, 3: Advance. Default is 2.
+        :param extract_mode: Fields extract version. Common values are 0: Default, 1: Lite, 2: Regular, 3: Advance.
         :type extract_mode: int
+        :param detect_mode: Detection mode matched with the configured detect group.
+        :type detect_mode: int
         :return: Task object containing task id
         :rtype: :class:`Task <Task>`
         """
@@ -763,6 +765,7 @@ class Client(object):
             'lang': lang,
             'hitl': hitl,
             'extractMode': extract_mode,
+            'detectMode': detect_mode,
             'groupId': group_id
         }
 
