@@ -226,44 +226,44 @@ class Client(object):
         self.oauth_client = oauth_client
         self.headers = self.oauth_client.token_header
 
-        self.extraction_async_create_url = f"{http_host}/customer/extraction/fields/async"
-        self.extraction_result_url = f"{http_host}/customer/extraction/field/async/result"
-        self.extraction_task_history_url = f"{http_host}/customer/extraction/history/list"
-        self.extraction_task_add_hitl_url = f"{http_host}/customer/extraction/task/to_hitl"
+        self.extraction_async_create_url = f"{self.http_host}/customer/extraction/fields/async"
+        self.extraction_result_url = f"{self.http_host}/customer/extraction/field/async/result"
+        self.extraction_task_history_url = f"{self.http_host}/customer/extraction/history/list"
+        self.extraction_task_add_hitl_url = f"{self.http_host}/customer/extraction/task/to_hitl"
 
-        self.extraction_faas_create_url = f"{http_host}/customer/extraction/faas/analysis"
-        self.extraction_faas_status_url = f"{http_host}/customer/extraction/faas/analysis/status"
-        self.extraction_faas_export_url = f"{http_host}/customer/extraction/faas/analysis/export"
-        self.extraction_faas_result_url = f"{http_host}/customer/extraction/faas/analysis/result"
+        self.extraction_faas_create_url = f"{self.http_host}/customer/extraction/faas/analysis"
+        self.extraction_faas_status_url = f"{self.http_host}/customer/extraction/faas/analysis/status"
+        self.extraction_faas_export_url = f"{self.http_host}/customer/extraction/faas/analysis/export"
+        self.extraction_faas_result_url = f"{self.http_host}/customer/extraction/faas/analysis/result"
 
-        self.extraction_doc_agent_create_url = f"{http_host}/customer/extraction/doc_agent/analysis"
-        self.extraction_doc_agent_status_url = f"{http_host}/customer/extraction/doc_agent/status"
-        self.extraction_doc_agent_export_url = f"{http_host}/customer/extraction/doc_agent/analysis/export"
+        self.extraction_doc_agent_create_url = f"{self.http_host}/customer/extraction/doc_agent/analysis"
+        self.extraction_doc_agent_status_url = f"{self.http_host}/customer/extraction/doc_agent/status"
+        self.extraction_doc_agent_export_url = f"{self.http_host}/customer/extraction/doc_agent/analysis/export"
 
-        self.extraction_card_fields_url = f"{http_host}/customer/extraction/fields/sync/cards"
+        self.extraction_card_fields_url = f"{self.http_host}/customer/extraction/fields/sync/cards"
 
-        self.split_and_extraction_async_create_url = f"{http_host}/customer/extraction/split/ext/fields/async"
-        self.split_and_extraction_async_status_url = f"{http_host}/customer/extraction/split/ext/status"
-        self.split_and_extraction_async_export_url = f"{http_host}/customer/extraction/split/ext/download/zip"
-
-        # Add these to Client.__init__
-        self.cross_doc_match_create_url = f"{http_host}/customer/extraction/cross_document_match/analysis"
-        self.cross_doc_match_status_url = f"{http_host}/customer/extraction/cross_document_match/status"
-        self.cross_doc_match_export_url = f"{http_host}/customer/extraction/cross_document_match/export/excel"
-        self.cross_doc_match_export_zip_url = f"{http_host}/customer/extraction/cross_document_match/export/zip"
+        self.split_and_extraction_async_create_url = f"{self.http_host}/customer/extraction/split/ext/fields/async"
+        self.split_and_extraction_async_status_url = f"{self.http_host}/customer/extraction/split/ext/status"
+        self.split_and_extraction_async_export_url = f"{self.http_host}/customer/extraction/split/ext/download/zip"
 
         # Add these to Client.__init__
-        self.fs_agent_create_url = f"{http_host}/customer/extraction/fs_agent/analysis"
-        self.fs_agent_status_url = f"{http_host}/customer/extraction/fs_agent/analysis/status"
-        self.fs_agent_export_url = f"{http_host}/customer/extraction/fs_agent/analysis/export"
+        self.cross_doc_match_create_url = f"{self.http_host}/customer/extraction/cross_document_match/analysis"
+        self.cross_doc_match_status_url = f"{self.http_host}/customer/extraction/cross_document_match/status"
+        self.cross_doc_match_export_url = f"{self.http_host}/customer/extraction/cross_document_match/export/excel"
+        self.cross_doc_match_export_zip_url = f"{self.http_host}/customer/extraction/cross_document_match/export/zip"
 
         # Add these to Client.__init__
-        self.doc_digitization_create_url = f"{http_host}/customer/extraction/digitization"
-        self.doc_digitization_status_url = f"{http_host}/customer/extraction/digitization/status"
-        self.doc_digitization_export_url = f"{http_host}/customer/extraction/digitization/export"
+        self.fs_agent_create_url = f"{self.http_host}/customer/extraction/fs_agent/analysis"
+        self.fs_agent_status_url = f"{self.http_host}/customer/extraction/fs_agent/analysis/status"
+        self.fs_agent_export_url = f"{self.http_host}/customer/extraction/fs_agent/analysis/export"
+
+        # Add these to Client.__init__
+        self.doc_digitization_create_url = f"{self.http_host}/customer/extraction/digitization"
+        self.doc_digitization_status_url = f"{self.http_host}/customer/extraction/digitization/status"
+        self.doc_digitization_export_url = f"{self.http_host}/customer/extraction/digitization/export"
 
         # Add to Client.__init__
-        self.ai_chat_completion_url = f"{http_host}/customer/extraction/ai/chat"
+        self.ai_chat_completion_url = f"{self.http_host}/customer/extraction/ai/chat"
 
     def refresh_token(self, refresh_interval=90 * 60):
         """
