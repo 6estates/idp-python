@@ -77,6 +77,16 @@ def _json_form_value(value):
     return json.dumps(value)
 
 
+def _response_error_message(response):
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            return payload.get('message') or payload.get('errorMessage') or str(payload)
+        return str(payload)
+    except ValueError:
+        return response.text
+
+
 def compute_hmac_sha256(key, message):
     """
     return the hmac_sha256 of the message with the given key and message
@@ -624,7 +634,9 @@ class Client(object):
         r = requests.post(self.extraction_faas_result_url,
                           headers=self.headers,
                           json=data)
-        return r.json()
+        if r.ok:
+            return r.json()
+        raise IDPException(_response_error_message(r))
         # return FaasTaskResult(r.json())
 
     def extraction_faas_export(self, application_id=None):
@@ -645,10 +657,9 @@ class Client(object):
         r = requests.post(self.extraction_faas_export_url,
                           headers=self.headers,
                           json=data)
-        if 'errorCode' in r.text:
-            raise IDPException(r.text)
-        else:
+        if r.ok:
             return r.content
+        raise IDPException(_response_error_message(r))
 
     def extraction_doc_agent_create(self, flowCode: int,
                                     file,
@@ -1534,7 +1545,9 @@ class FaasExtractionTaskClient(object):
         else:
             headers = {"X-ACCESS-TOKEN": self.token}
         r = requests.get(self.url_get_result + str(task_id), headers=headers)
-        return r.json()
+        if r.ok:
+            return r.json()
+        raise IDPException(_response_error_message(r))
         # return FaasTaskResult(r.json())
 
     def export(self, task_id=None):
@@ -1552,7 +1565,6 @@ class FaasExtractionTaskClient(object):
             headers = {"X-ACCESS-TOKEN": self.token}
         r = requests.get(self.url_get_export + str(task_id), headers=headers)
         # you might need to read the r.content as a result zip file
-        if 'errorCode' in r.text:
-            raise IDPException(r.text)
-        else:
+        if r.ok:
             return r.content
+        raise IDPException(_response_error_message(r))
