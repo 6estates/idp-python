@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import time
 from enum import Enum
 
@@ -68,6 +69,12 @@ def _normalize_multipart_files(field_name, file_or_files, filename=None):
         return [(field_name, item) for item in file_or_files]
 
     return {field_name: file_or_files}
+
+
+def _json_form_value(value):
+    if value is None or isinstance(value, str):
+        return value
+    return json.dumps(value)
 
 
 def compute_hmac_sha256(key, message):
@@ -649,7 +656,7 @@ class Client(object):
                                     autoCallback: bool = None,
                                     callbackMode: int = None,
                                     callbackQaCodes: str = None,
-                                    fileDocTypeList: list = []):
+                                    fileDocTypeList: list = None):
         """
         Args:
             flowCode (int): The code of task flow, please contact 6E admin to obtain the task flow code.
@@ -676,7 +683,7 @@ class Client(object):
             "autoCallback": autoCallback,
             "callbackMode": callbackMode,
             "callbackQaCodes": callbackQaCodes,
-            "fileDocTypeList": fileDocTypeList,
+            "fileDocTypeList": _json_form_value(fileDocTypeList),
         }
         files = _normalize_multipart_files("file", file)
         trash_bin = []
