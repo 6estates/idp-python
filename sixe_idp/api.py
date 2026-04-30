@@ -38,6 +38,38 @@ def _to_bytes(value):
     return str(value).encode('utf-8')
 
 
+def _is_named_file_tuple(value):
+    return isinstance(value, tuple) and 2 <= len(value) <= 4 and isinstance(value[0], str)
+
+
+def _is_file_collection(value):
+    return (
+        isinstance(value, list)
+        or (isinstance(value, tuple) and not _is_named_file_tuple(value))
+    ) and not hasattr(value, 'read') and not isinstance(value, (bytes, bytearray, str))
+
+
+def _normalize_multipart_files(field_name, file_or_files, filename=None):
+    if isinstance(file_or_files, dict):
+        return file_or_files
+
+    if filename is not None:
+        if _is_file_collection(file_or_files):
+            if _is_file_collection(filename):
+                if len(file_or_files) != len(filename):
+                    raise IDPException("file_content and filename must have the same length")
+                return [(field_name, (name, content)) for name, content in zip(filename, file_or_files)]
+            return [(field_name, item) for item in file_or_files]
+        return {field_name: (filename, file_or_files)}
+
+    if _is_file_collection(file_or_files):
+        if all(isinstance(item, tuple) and len(item) == 2 and item[0] == field_name for item in file_or_files):
+            return list(file_or_files)
+        return [(field_name, item) for item in file_or_files]
+
+    return {field_name: file_or_files}
+
+
 def compute_hmac_sha256(key, message):
     """
     return the hmac_sha256 of the message with the given key and message
@@ -289,8 +321,8 @@ class Client(object):
                                 extractMode=None, includingFieldCodes=None,
                                 autoChecks=None, remark=None):
         """
-        :param file: Pdf/image file. Only one file is allowed to be uploaded each time
-        :type file: file
+        :param file: Pdf/image file or a list of files to upload into one application
+        :type file: file or list
         :param file_type: The str of the file type (e.g., CBKS), this could be CBKS,CINV those publick file type and can also be self-defined file type if fileTypeFrom is set to be 2
         :type file_type: str
         :param lang: English: EN, Default is EN
@@ -326,7 +358,7 @@ class Client(object):
         if file_type is None:
             raise IDPException("file_type is required")
 
-        files = {"file": file}
+        files = _normalize_multipart_files("file", file)
         data = {'fileType': file_type, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,
@@ -476,7 +508,7 @@ class Client(object):
                                callbackMode: int = 0):
         """
         Args:
-            files (files): Support PDF/IMG/Zip file. Please make sure only pdf/image file in zip file.
+            files (files): Support PDF/IMG/Zip file. For multiple files, pass a list of requests multipart entries.
             customerType (str): Customer type: 1 means Individual/Retail or Consumer Loan, 2 means Company/Business or Productive Loan.
             countryId (str, optional): Id of country. Defaults to None.
             regionId (str, optional): Id of region. Defaults to None.
@@ -506,6 +538,7 @@ class Client(object):
         """
         if files is None:
             raise IDPException("Files are required")
+        files = _normalize_multipart_files("files", files)
 
         data = {"customerType": customerType,
                 "countryId": countryId,
@@ -620,7 +653,7 @@ class Client(object):
         """
         Args:
             flowCode (int): The code of task flow, please contact 6E admin to obtain the task flow code.
-            file (str): Support PDF/IMG/Zip file. Please make sure only pdf/image file in zip file.
+            file (str): Support PDF/IMG/Zip file, or a list of files to upload into one application.
             callback (str, optional): A http(s) link for callback after completing the task.
                     If you need to use the callback parameter, please communicate with us if your callback system needs any authentication mechanism.
             autoCallback (bool, optional): Callback request will request automatic if autoCallback is true, otherwise, the user needs to manually trigger the callback.
@@ -645,7 +678,7 @@ class Client(object):
             "callbackQaCodes": callbackQaCodes,
             "fileDocTypeList": fileDocTypeList,
         }
-        files = {"file": file}
+        files = _normalize_multipart_files("file", file)
         trash_bin = []
         for key in data:
             if data[key] is None:
@@ -736,8 +769,8 @@ class Client(object):
         Asynchronously submit file for split and fields extraction.
         The uploaded file will be split into one file per page, then each page will be identified and extracted.
 
-        :param file: Pdf file. Only one file is allowed to be uploaded each time
-        :type file: file
+        :param file: Pdf file or a list of files to upload into one application
+        :type file: file or list
         :param group_id: File type group id
             1: "Invoice","Delivery Order","Purchase Order","Tanda Terima Receipt", "Faktur Pajak Tax Invoice"
             2: "Air Waybill","Bill of Lading","Invoice","Packing List","Formulir Pengajuan Dokumen Ekspor"
@@ -760,7 +793,7 @@ class Client(object):
         if group_id is None:
             raise IDPException("group_id is required")
 
-        files = {"file": file}
+        files = _normalize_multipart_files("file", file)
         data = {
             'lang': lang,
             'hitl': hitl,
@@ -930,11 +963,11 @@ class Client(object):
         else:
             raise IDPException(f"Task status is abnormal or unknown: {status}")
 
-    def fs_agent_create(self, file_content, filename, customer_type=1, hitl=False):
+    def fs_agent_create(self, file_content, filename=None, customer_type=1, hitl=False):
         """
 
-        :param file_content: Bytes or file-like object of the PDF/IMG/Excel/Word file
-        :param filename: Name of the file (e.g., 'document.pdf').
+        :param file_content: Bytes, file-like object, or list of PDF/IMG/Excel/Word files
+        :param filename: Name of the file, or a list of names when file_content is a list.
         :param customer_type: 1 General. The current system only supports the general type.
                 Default value: 1
         :param hitl: Enables the Human-In-The-Loop (HITL) service.
@@ -947,7 +980,7 @@ class Client(object):
         self.refresh_token()
 
         # Prepare multipart/form-data
-        files = {'files': (filename, file_content)}
+        files = _normalize_multipart_files('files', file_content, filename=filename)
         data = {'customerType': customer_type, 'hitl': hitl}
 
         r = requests.post(self.fs_agent_create_url, headers=self.headers, files=files, data=data)
@@ -1395,6 +1428,7 @@ class FaasExtractionTaskClient(object):
         """
         if files is None:
             raise IDPException("Files are required")
+        files = _normalize_multipart_files("files", files)
 
         if self.isOauth:
             headers = {"Authorization": self.token}
