@@ -508,8 +508,8 @@ class Client(object):
             raise IDPException("Files are required")
 
         data = {"customerType": customerType,
-                "countryld": countryId,
-                "regionld": regionId,
+                "countryId": countryId,
+                "regionId": regionId,
                 "informationType": informationType,
                 "cifNumber": cifNumber,
                 "borrowerName": borrowerName,
@@ -1398,8 +1398,8 @@ class FaasExtractionTaskClient(object):
         else:
             headers = {"X-ACCESS-TOKEN": self.token}
         data = {"customerType": customerType,
-                "countryld": countryId,
-                "regionld": regionId,
+                "countryId": countryId,
+                "regionId": regionId,
                 "informationType": informationType,
                 "cifNumber": cifNumber,
                 "borrowerName": borrowerName,
