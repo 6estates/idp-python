@@ -30,6 +30,14 @@ def build_sha256_str(clientId, clientSecret, timestamp):
     return sha256_hash
 
 
+def _to_bytes(value):
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    return str(value).encode('utf-8')
+
+
 def compute_hmac_sha256(key, message):
     """
     return the hmac_sha256 of the message with the given key and message
@@ -38,7 +46,7 @@ def compute_hmac_sha256(key, message):
     param message: the message to be used for hmac
         :type message: str
     """
-    hasher = hmac.new(key.encode('utf-8'), message, hashlib.sha256)
+    hasher = hmac.new(_to_bytes(key), _to_bytes(message), hashlib.sha256)
     hash_result = hasher.hexdigest()
     return hash_result
 
@@ -55,7 +63,7 @@ def verify_app_header(payload, sig_header_signature, secret):
     """
     expected_signature = None
     try:
-        expected_signature = compute_hmac_sha256(secret, payload.encode('utf-8'))
+        expected_signature = compute_hmac_sha256(secret, payload)
     except Exception as e:
         raise IDPException("Unable to compute signature for payload", sig_header_signature)
 
