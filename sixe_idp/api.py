@@ -45,8 +45,8 @@ def _is_named_file_tuple(value):
 
 def _is_file_collection(value):
     return (
-        isinstance(value, list)
-        or (isinstance(value, tuple) and not _is_named_file_tuple(value))
+            isinstance(value, list)
+            or (isinstance(value, tuple) and not _is_named_file_tuple(value))
     ) and not hasattr(value, 'read') and not isinstance(value, (bytes, bytearray, str))
 
 
@@ -301,6 +301,7 @@ class Client(object):
 
         self.split_and_extraction_async_create_url = f"{self.http_host}/customer/extraction/split/ext/fields/async"
         self.split_and_extraction_async_status_url = f"{self.http_host}/customer/extraction/split/ext/status"
+        self.split_and_extraction_async_result_url = f"{self.http_host}/customer/extraction/split/ext/result/json"
         self.split_and_extraction_async_export_url = f"{self.http_host}/customer/extraction/split/ext/download/zip"
 
         # Add these to Client.__init__
@@ -338,8 +339,8 @@ class Client(object):
                                 extractMode=None, includingFieldCodes=None,
                                 autoChecks=None, remark=None):
         """
-        :param file: Pdf/image file or a list of files to upload into one application
-        :type file: file or list
+        :param file: Pdf/image/zip file. Only one file is allowed to be uploaded each time. In zip file, only pdf and image can be uploaded.
+        :type file: file
         :param file_type: The str of the file type (e.g., CBKS), this could be CBKS,CINV those publick file type and can also be self-defined file type if fileTypeFrom is set to be 2
         :type file_type: str
         :param lang: English: EN, Default is EN
@@ -375,7 +376,7 @@ class Client(object):
         if file_type is None:
             raise IDPException("file_type is required")
 
-        files = _normalize_multipart_files("file", file)
+        files = {"file": file}
         data = {'fileType': file_type, 'lang': lang, 'customer': customer,
                 'customerParam': customer_param, 'callback': callback,
                 'autoCallback': auto_callback, 'callbackMode': callback_mode,
@@ -525,7 +526,7 @@ class Client(object):
                                callbackMode: int = 0):
         """
         Args:
-            files (files): Support PDF/IMG/Zip file. For multiple files, pass a list of requests multipart entries.
+            files (files): Support PDF/IMG/Zip file. For multiple files, zip into one single file and upload.
             customerType (str): Customer type: 1 means Individual/Retail or Consumer Loan, 2 means Company/Business or Productive Loan.
             countryId (str, optional): Id of country. Defaults to None.
             regionId (str, optional): Id of region. Defaults to None.
@@ -555,7 +556,7 @@ class Client(object):
         """
         if files is None:
             raise IDPException("Files are required")
-        files = _normalize_multipart_files("files", files)
+        # files = _normalize_multipart_files("files", files)
 
         data = {"customerType": customerType,
                 "countryId": countryId,
@@ -696,7 +697,8 @@ class Client(object):
             "callbackQaCodes": callbackQaCodes,
             "fileDocTypeList": _json_form_value(fileDocTypeList),
         }
-        files = _normalize_multipart_files("file", file)
+        # files = _normalize_multipart_files("file", file)
+        files = {"file": file}
         trash_bin = []
         for key in data:
             if data[key] is None:
@@ -710,15 +712,15 @@ class Client(object):
             return Task(r.json())
         raise IDPException(r.json()['message'])
 
-    def extraction_doc_agent_status(self, applicationId):
+    def extraction_doc_agent_status(self, application_id=None):
         """
             Get the status of a task.
         """
-        if applicationId is None:
-            raise IDPException("applicationId is required")
+        if application_id is None:
+            raise IDPException("application_id is required")
         # self.refresh_token()
         # r = requests.post(self.extraction_doc_agent_status_url + applicationId, headers=self.headers)
-        data = {"applicationId": applicationId}
+        data = {"applicationId": application_id}
         self.refresh_token()
         r = requests.post(self.extraction_doc_agent_status_url,
                           headers=self.headers,
@@ -728,13 +730,13 @@ class Client(object):
         else:
             raise IDPException(r.json()['message'])
 
-    def extraction_doc_agent_export(self, applicationId, task_codes=None):
+    def extraction_doc_agent_export(self, application_id, task_codes=None):
         """
             Get the result of a task.
         """
-        if applicationId is None:
-            raise IDPException("applicationId is required")
-        data = {"applicationId": applicationId,
+        if application_id is None:
+            raise IDPException("application_id is required")
+        data = {"applicationId": application_id,
                 "taskCodes": task_codes}
         # remove blank values
         data = {k: v for k, v in data.items() if v is not None}
@@ -781,21 +783,20 @@ class Client(object):
             return r.json()
         raise IDPException(r.json()['message'])
 
-    def split_and_extraction_async_create(self, file=None, group_id=None, lang='EN', hitl=None, extract_mode=None,
+    def split_and_extraction_async_create(self, file=None, group_id=None, hitl=None, extract_mode=None,
                                           detect_mode=None):
         """
         Asynchronously submit file for split and fields extraction.
         The uploaded file will be split into one file per page, then each page will be identified and extracted.
 
-        :param file: Pdf file or a list of files to upload into one application
-        :type file: file or list
+        :param file: Pdf file. Only one file is allowed to be uploaded each time.
+        :type file: file
         :param group_id: File type group id
+                Please consult the 6E administrator for the groupId applicable to your current business.
             1: "Invoice","Delivery Order","Purchase Order","Tanda Terima Receipt", "Faktur Pajak Tax Invoice"
             2: "Air Waybill","Bill of Lading","Invoice","Packing List","Formulir Pengajuan Dokumen Ekspor"
             3: "Kartu Tanda Penduduk","Bukti Kepemilikan Kendaraan Bermotor","Surat Tanda Nomer Kendaraan","Kartu Keluarga"
         :type group_id: int
-        :param lang: Language, English: EN, Default is EN
-        :type lang: str
         :param hitl: Enables Human-In-The-Loop service.
             True: processed by AI + HITL, False: processed by AI only. Default is False.
         :type hitl: bool
@@ -811,9 +812,9 @@ class Client(object):
         if group_id is None:
             raise IDPException("group_id is required")
 
-        files = _normalize_multipart_files("file", file)
+        # files = _normalize_multipart_files("file", file)
+        files = {"file": file}
         data = {
-            'lang': lang,
             'hitl': hitl,
             'extractMode': extract_mode,
             'detectMode': detect_mode,
@@ -846,6 +847,25 @@ class Client(object):
         data = {"applicationId": application_id}
         self.refresh_token()
         r = requests.post(self.split_and_extraction_async_status_url,
+                          headers=self.headers,
+                          json=data)
+        if r.ok:
+            return r.json()
+        raise IDPException(r.json()['message'])
+
+    def split_and_extraction_result(self, application_id=None):
+        """
+        get the split_and_extraction task status.
+        :param application_id: application ID
+        :type application_id: str
+        :return: json result
+        """
+        if application_id is None:
+            raise IDPException("application_id is required")
+
+        data = {"applicationId": application_id}
+        self.refresh_token()
+        r = requests.post(self.split_and_extraction_async_result_url,
                           headers=self.headers,
                           json=data)
         if r.ok:
@@ -981,11 +1001,10 @@ class Client(object):
         else:
             raise IDPException(f"Task status is abnormal or unknown: {status}")
 
-    def fs_agent_create(self, file_content, filename=None, customer_type=1, hitl=False):
+    def fs_agent_create(self, files, customer_type=1, hitl=False):
         """
 
-        :param file_content: Bytes, file-like object, or list of PDF/IMG/Excel/Word files
-        :param filename: Name of the file, or a list of names when file_content is a list.
+        :param files: Support PDF/IMG/Excel/Word file
         :param customer_type: 1 General. The current system only supports the general type.
                 Default value: 1
         :param hitl: Enables the Human-In-The-Loop (HITL) service.
@@ -998,7 +1017,8 @@ class Client(object):
         self.refresh_token()
 
         # Prepare multipart/form-data
-        files = _normalize_multipart_files('files', file_content, filename=filename)
+        # files = _normalize_multipart_files('files', file_content, filename=filename)
+        files = {"files": files}
         data = {'customerType': customer_type, 'hitl': hitl}
 
         r = requests.post(self.fs_agent_create_url, headers=self.headers, files=files, data=data)
@@ -1039,18 +1059,17 @@ class Client(object):
             return r.content  # Returns the binary file content (PDF/Excel report)
         raise IDPException(f"FS Agent Export Failed despite successful status,{r.text}")
 
-    def doc_digitization_create(self, file_content, filename):
+    def doc_digitization_create(self, file=None):
         """
         Pdf/image file. Only one file is allowed to be uploaded each time.
             The file size should not exceed 50M, and the page number should not exceed 30 pages.
-        :param file_content: Bytes or file-like object (PDF/Image).
-        :param filename: Name of the file, e.g., 'invoice.pdf'.
+        :param file: Bytes or file-like object (PDF/Image).
         :return: Task
         """
         self.refresh_token()
 
         # Prepare multipart/form-data
-        files = {'file': (filename, file_content)}
+        files = {'file': file}
 
         r = requests.post(self.doc_digitization_create_url, headers=self.headers, files=files)
         if r.ok:
@@ -1149,6 +1168,8 @@ class Client(object):
             return r.json()
 
         raise IDPException(f"AI Chat Completion Failed: {r.text}")
+
+
 class IDPException(Exception):
     """
         An IDP processing error occurred.

@@ -52,22 +52,12 @@ Usage
     task = client.extraction_async_create(file=open("/your/file/path/upload/idp/test_file.pdf", "rb"),file_type='CBKS')
     print(task.application_id)
 
-    # Multiple files can be submitted into one application by passing a list.
-    task = client.extraction_async_create(
-        file=[
-            open("/your/file/path/upload/idp/bank_statement_1.pdf", "rb"),
-            open("/your/file/path/upload/idp/bank_statement_2.pdf", "rb"),
-        ],
-        file_type='CBKS',
-    )
-    print(task.application_id)
-
 
 2.2 To Get Fields Extraction Result By ApplicationId
 ~~~~~~~~~~~~
 .. code-block:: python
 
-    application_id = '12345'
+    application_id = 'your application_id'
     task_result = client.extraction_result(application_id=application_id)  # try to fetch the result
     print(task_result)
 
@@ -152,12 +142,6 @@ Usage
     task = client.extraction_faas_create(files=files, customerType=1, countryId='100065', informationType=0)
     print(task.application_id)
 
-    files = [
-        ("bank_statement_1.pdf", open('/your/file/path/bank_statement_1.pdf', 'rb')),
-        ("bank_statement_2.pdf", open('/your/file/path/bank_statement_2.pdf', 'rb')),
-    ]
-    task = client.extraction_faas_create(files=files, customerType=1, countryId='100065', informationType=0)
-    print(task.application_id)
 
 4.2 To Get FAAS Insight Analysis Status By Insight Analysis Application Id
 ~~~~~~~~~~~~
@@ -172,7 +156,7 @@ Usage
 .. code-block:: python
 
     # this content could be a xlsx file or a zip file depending on your config on our system
-    application_id = 'FAAS1234'
+    application_id = 'your FAAS task application_id'
     client.refresh_token()
     content_bytes = client.extraction_faas_export(application_id=application_id)
     # NOTE: suffix could be zip or xlsx, take zip as a demo, it is decided by your company config on our system
@@ -184,7 +168,7 @@ Usage
 ~~~~~~~~~~~~
 .. code-block:: python
 
-    application_id = 'FAAS1234'
+    application_id =  'your FAAS task application_id'
     res = client.extraction_faas_result(application_id=application_id)
     print(res)
 
@@ -261,28 +245,15 @@ Usage
 
     task = client.extraction_doc_agent_create(flowCode='DAG1',file=open("your file path", "rb"))
     print(task.application_id)
-    # this would be the application_id
 
-    task = client.extraction_doc_agent_create(
-        flowCode='DAG1',
-        file=[
-            open("/your/file/path/document_1.pdf", "rb"),
-            open("/your/file/path/document_2.pdf", "rb"),
-        ],
-        fileDocTypeList=[
-            {"fileName": "document_1.pdf", "fileType": "CBKS", "fileTypeFrom": 1},
-            {"fileName": "document_2.pdf", "fileType": "CINV", "fileTypeFrom": 1},
-        ],
-    )
-    print(task.application_id)
 
 5.2 Query Document Agent Application Status
 ~~~~~~~~~~~~
 
 .. code-block:: python
 
-    application_id = 'your application id'
-    response = client.extraction_doc_agent_status(applicationId=application_id)
+    application_id = 'your Document Agent Task application_id'
+    response = client.extraction_doc_agent_status(application_id=application_id)
     print(status['data']['status'])
 
 5.3 Export Result of Document Agent Application
@@ -291,8 +262,8 @@ Usage
 .. code-block:: python
 
     # NOTE: this could be a xlsx or a zip file depending on your config on our system
-    application_id = 'your application id'
-    content_bytes = client.extraction_doc_agent_export(applicationId=application_id)
+    application_id = 'your Document Agent Task application_id'
+    content_bytes = client.extraction_doc_agent_export(application_id=application_id)
     with open('/your/path/doc_agent/download/file.zip', 'wb') as f:
         f.write(content_bytes)
 5.4 Sample of create a doc agent task and fetch the result
@@ -319,19 +290,19 @@ Usage
         start = time.time()
 
         # 2. get doc agent task status
-        response = client.extraction_doc_agent_status(applicationId=task.application_id)
+        response = client.extraction_doc_agent_status(application_id=task.application_id)
         status = response['data']['status']
         print(status)
         while status in ['On Process']:
             if time.time() - start > timeout:
                 raise IDPException(f'Task timeout exceeded: {timeout}')
             time.sleep(poll_interval)
-            response = client.extraction_doc_agent_status(applicationId=task.application_id)
+            response = client.extraction_doc_agent_status(application_id=task.application_id)
             status = response['data']['status']
             print(status)
         # 3. get doc agent result
-        content_bytes = client.extraction_doc_agent_export(applicationId=task.application_id)
-        with open(f'{result_file_dir}/{task.application_id}.xlsx', 'wb') as f:
+        content_bytes = client.extraction_doc_agent_export(application_id=task.application_id)
+        with open(f'{result_file_dir}/{task.application_id}.zip', 'wb') as f:
             f.write(content_bytes)
         print(f"{task.application_id} end cost {time.time() - start} seconds")
 
@@ -349,30 +320,19 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
-    split_and_extraction_task = client.split_and_extraction_async_create(file=open("/your/path/uploaded/Split And Extraction file.pdf", "rb"),group_id=3,lang='EN',hitl=False,extract_mode=3)
+
+    split_and_extraction_task = client.split_and_extraction_async_create(file=open("/your/path/uploaded/Split And Extraction file.pdf", "rb"),group_id=10,hitl=False,extract_mode=0)
+    # Please consult the 6E administrator for the group_id applicable to your current business
     print(split_and_extraction_task.application_id)
 
-    split_and_extraction_task = client.split_and_extraction_async_create(
-        file=[
-            open("/your/path/uploaded/Split And Extraction file 1.pdf", "rb"),
-            open("/your/path/uploaded/Split And Extraction file 2.pdf", "rb"),
-        ],
-        group_id=1029,
-        lang='EN',
-        hitl=False,
-        detect_mode=5,
-        extract_mode=0,
-    )
-    print(split_and_extraction_task.application_id)
 
 6.2 Get Status By ApplicationId for Split And Fields Extraction Task
 ~~~~~~~~~~~~
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
-    application_id = 'your split and extraction application_id' # like SE123456789
+
+    application_id = 'your split and extraction task application_id' # like SE123456789
     split_and_extraction_task_status = client.split_and_extraction_status(application_id=application_id)
     print(split_and_extraction_task_status)
 
@@ -381,12 +341,20 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
-    application_id = 'your split and extraction application_id' # like SE123456789
+
+    application_id = 'your split and extraction task application_id' # like SE123456789
     split_and_extraction_task_content_bytes = client.split_and_extraction_export(application_id=application_id)
     with open(f'/your/path/download/{application_id}.zip', 'wb') as f:
         f.write(split_and_extraction_task_content_bytes)
 
+6.4 Get Json Result By ApplicationId for Split And Fields Extraction Task
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+
+    application_id = 'your split and extraction task application_id' # like SE123456789
+    split_and_extraction_task_result = client.split_and_extraction_result(application_id=application_id)
 
 7. Document Digitization
 --------------------------------------------------------------------
@@ -396,8 +364,7 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
-    doc_digitization_task = client.doc_digitization_create(file_content=open("/your/path/uploaded/doc_digitization file",'rb'), filename='your doc_digitization file name')
+    doc_digitization_task = client.doc_digitization_create(file=open("/your/path/uploaded/doc_digitization file",'rb'))
     application_id = doc_digitization_task.application_id
     print(application_id)
 
@@ -406,7 +373,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your doc_digitization application_id'
     doc_digitization_task_status = client.doc_digitization_status(application_id=application_id)
     print(doc_digitization_task_status)
@@ -416,7 +382,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your doc_digitization application_id'
     doc_digitization_bytes = client.doc_digitization_result(application_id=application_id,result_type=1)
     if doc_digitization_bytes:
@@ -432,27 +397,16 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
-    fs_agent_task = client.fs_agent_create(file_content=open("/your/path/uploaded/FS Agent file",'rb'), filename='your FS Agent file name')
+    fs_agent_task = client.fs_agent_create(file=open("/your/path/uploaded/FS Agent file",'rb'))
     application_id = fs_agent_task.application_id
     print(application_id)
 
-    fs_agent_task = client.fs_agent_create(
-        file_content=[
-            open("/your/path/uploaded/FS Agent file 1.pdf", "rb"),
-            open("/your/path/uploaded/FS Agent file 2.pdf", "rb"),
-        ],
-        filename=["FS Agent file 1.pdf", "FS Agent file 2.pdf"],
-    )
-    application_id = fs_agent_task.application_id
-    print(application_id)
 
 8.2 Query FS Agent Application Status
 ~~~~~~~~~~~~
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your FS Agent application_id'
     fs_agent_task_status = client.fs_agent_status(application_id=application_id)
     print(fs_agent_task_status)
@@ -462,7 +416,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your FS Agent application_id'
     fs_agent_task_result_bytes = client.fs_agent_get_result(application_id=application_id)
     if fs_agent_task_result_bytes:
@@ -477,7 +430,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
 
     params = [
         {
@@ -502,7 +454,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your Cross Document Matching application_id'
     cross_doc_match_task_status = client.cross_doc_match_status(application_id=application_id)
     print(cross_doc_match_task_status)
@@ -512,7 +463,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your Cross Document Matching application_id'
     cross_doc_match_task_result_bytes = client.cross_doc_match_result(application_id=application_id)
     if cross_doc_match_task_result_bytes:
@@ -524,7 +474,6 @@ Usage
 
 .. code-block:: python
 
-    from sixe_idp.api import Client, OauthClient, IDPException
     application_id = 'your Cross Document Matching application_id'
     cross_doc_match_task_result_zip = client.cross_doc_match_result_zip(application_id=application_id)
     if cross_doc_match_task_result_zip:
